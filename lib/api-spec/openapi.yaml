@@ -10,6 +10,8 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: rooms
+    description: Create and join live game rooms
 paths:
   /healthz:
     get:
@@ -24,6 +26,74 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+  /rooms:
+    post:
+      operationId: createRoom
+      tags: [rooms]
+      summary: Create a game room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoomInput"
+      responses:
+        "201":
+          description: Room created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomEntryResponse"
+        "400":
+          description: Invalid player name
+  /rooms/{code}:
+    get:
+      operationId: getRoom
+      tags: [rooms]
+      summary: Get the current room and players
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Current room state
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameRoom"
+        "404":
+          description: Room not found
+  /rooms/{code}/join:
+    post:
+      operationId: joinRoom
+      tags: [rooms]
+      summary: Join an existing game room
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/JoinRoomInput"
+      responses:
+        "200":
+          description: Player joined
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoomEntryResponse"
+        "404":
+          description: Room not found
+        "409":
+          description: Room is full
 components:
   schemas:
     HealthStatus:
@@ -33,4 +103,55 @@ components:
           type: string
       required:
         - status
+    CreateRoomInput:
+      type: object
+      properties:
+        playerName:
+          type: string
+          minLength: 1
+          maxLength: 24
+      required: [playerName]
+    JoinRoomInput:
+      type: object
+      properties:
+        playerName:
+          type: string
+          minLength: 1
+          maxLength: 24
+      required: [playerName]
+    GamePlayer:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        isHost:
+          type: boolean
+        connected:
+          type: boolean
+      required: [id, name, isHost, connected]
+    GameRoom:
+      type: object
+      properties:
+        code:
+          type: string
+        players:
+          type: array
+          items:
+            $ref: "#/components/schemas/GamePlayer"
+        maxPlayers:
+          type: integer
+        status:
+          type: string
+          enum: [waiting]
+      required: [code, players, maxPlayers, status]
+    RoomEntryResponse:
+      type: object
+      properties:
+        playerId:
+          type: string
+        room:
+          $ref: "#/components/schemas/GameRoom"
+      required: [playerId, room]
 

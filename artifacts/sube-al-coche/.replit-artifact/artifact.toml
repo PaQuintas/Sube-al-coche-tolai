@@ -1,0 +1,28 @@
+kind = "web"
+previewPath = "/"
+title = "¡Sube al coche, tolai!"
+description = "Un juego web multijugador para quedar con amigos, crear salas y ver quién se une en tiempo real, con una estética de carretera nocturna."
+version = "1.0.0"
+id = "artifacts/sube-al-coche"
+router = "path"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 22644
+
+[services.development]
+run = "pnpm --filter @workspace/sube-al-coche run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/sube-al-coche", "run", "build" ]
+serve = "static"
+publicDir = "artifacts/sube-al-coche/dist/public"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "22644"
+BASE_PATH = "/"
