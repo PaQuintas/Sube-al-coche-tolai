@@ -94,6 +94,36 @@ paths:
           description: Room not found
         "409":
           description: Room is full
+  /rooms/{code}/start:
+    post:
+      operationId: startRoom
+      tags: [rooms]
+      summary: Start the trip
+      parameters:
+        - name: code
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StartRoomInput"
+      responses:
+        "200":
+          description: Trip started
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/GameRoom"
+        "403":
+          description: Only the host can start the trip
+        "404":
+          description: Room or player not found
+        "409":
+          description: The trip has already started
 components:
   schemas:
     HealthStatus:
@@ -119,6 +149,12 @@ components:
           minLength: 1
           maxLength: 24
       required: [playerName]
+    StartRoomInput:
+      type: object
+      properties:
+        playerId:
+          type: string
+      required: [playerId]
     GamePlayer:
       type: object
       properties:
@@ -144,7 +180,7 @@ components:
           type: integer
         status:
           type: string
-          enum: [waiting]
+          enum: [waiting, started]
       required: [code, players, maxPlayers, status]
     RoomEntryResponse:
       type: object

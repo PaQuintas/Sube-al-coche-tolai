@@ -1,7 +1,9 @@
 import { io } from "socket.io-client";
+import backgroundUrl from "@assets/generated_images/aguadulce-night-road.jpg";
 import "./game.css";
 
 const app = document.querySelector("#app");
+document.documentElement.style.setProperty("--night-road-image", `url("${backgroundUrl}")`);
 let roomCode = "";
 let playerId = "";
 let room = null;
@@ -26,10 +28,6 @@ function escapeHtml(value) {
 function scene(content) {
   return `
     <main class="scene">
-      <div class="horizon-glow" aria-hidden="true"></div>
-      <div class="streetlight streetlight-left" aria-hidden="true"></div>
-      <div class="streetlight streetlight-right" aria-hidden="true"></div>
-      <div class="road" aria-hidden="true"><span class="road-line"></span></div>
       <header class="masthead">
         <a class="wordmark" href="/" data-action="home" aria-label="Volver al inicio">
           <span class="wordmark-mark">ST</span>
@@ -54,40 +52,10 @@ function renderMenu() {
       <h1 class="hero-title">¡Sube al<br><em>coche, tolai!</em></h1>
       <p class="hero-copy">Una noche cualquiera, una carretera cualquiera y tu gente de siempre. Reúne a la cuadrilla y ya veremos dónde acabamos.</p>
       <div class="menu-actions">
-        <button class="button button-primary" data-action="create">Arrancar Motor <span aria-hidden="true">↗</span></button>
-        <button class="button button-secondary" data-action="rules">¿Cómo se viaja? <span aria-hidden="true">i</span></button>
-        <button class="button button-text" data-action="join">Tengo un código de sala <span aria-hidden="true">↗</span></button>
+        <button class="button button-primary" data-action="create">Arrancamos motores 🚗</button>
+        <button class="button button-secondary" data-action="rules">¿Cómo se viaja? 📖</button>
       </div>
-      <p class="under-note">HASTA 8 VIAJEROS <span>·</span> SOLO NECESITAS UN NOMBRE</p>
-    </section>`);
-}
-
-function renderEntry(kind, error = "") {
-  screen = kind;
-  const creating = kind === "create";
-  frame(`
-    <section class="stage">
-      <p class="eyebrow">${creating ? "El plan empieza aquí" : "Te están esperando"}</p>
-      <div class="panel">
-        <div class="panel-heading">
-          <div>
-            <h1 class="panel-title">${creating ? "Ponte al volante" : "¿Tienes sitio?"}</h1>
-            <p class="panel-copy">${creating ? "Crea una sala y pasa el código a tu gente." : "Mete el código que te han pasado y súbete."}</p>
-          </div>
-          <button class="icon-button" data-action="home" aria-label="Volver al menú">×</button>
-        </div>
-        <form class="form-stack" data-form="${creating ? "create" : "join"}">
-          <label class="field-label" for="player-name">¿Cómo te llamamos?
-            <input class="text-input" id="player-name" name="playerName" placeholder="Tu nombre de ruta" maxlength="24" minlength="1" autocomplete="nickname" required />
-          </label>
-          ${creating ? "" : `<label class="field-label" for="room-code">Código de sala
-            <input class="text-input input-code" id="room-code" name="code" placeholder="Ej. 4B6282" maxlength="12" minlength="1" autocapitalize="characters" required />
-          </label>`}
-          ${error ? `<p class="error-message" role="alert">${escapeHtml(error)}</p>` : ""}
-          <button class="button button-primary" type="submit">${creating ? "Crear sala" : "Subirme al coche"} <span aria-hidden="true">↗</span></button>
-        </form>
-        <button class="button button-text switch-action" data-action="${creating ? "join" : "create"}">${creating ? "Me han pasado un código" : "Prefiero crear la sala"} <span aria-hidden="true">↗</span></button>
-      </div>
+      <p class="under-note">UNA SALA PARA TODA LA CUADRILLA</p>
     </section>`);
 }
 
@@ -102,7 +70,6 @@ function renderRules() {
             <h1 class="panel-title">¿Cómo se viaja?</h1>
             <p class="panel-copy">Cuatro indicaciones antes de arrancar.</p>
           </div>
-          <button class="icon-button" data-action="home" aria-label="Volver al menú">×</button>
         </div>
         <ol class="rules-list">
           <li><span class="rule-number">01</span><span>Una persona crea la sala y comparte el enlace o el código con el resto.</span></li>
@@ -110,19 +77,19 @@ function renderRules() {
           <li><span class="rule-number">03</span><span>La sala admite hasta ocho viajeros y muestra en directo quién sigue conectado.</span></li>
           <li><span class="rule-number">04</span><span>Esperad a que llegue la cuadrilla. El viaje empieza cuando estéis todos.</span></li>
         </ol>
-        <button class="button button-primary" data-action="create">Vale, arrancamos <span aria-hidden="true">↗</span></button>
+        <button class="button button-secondary rules-back" data-action="home">Volver al menú</button>
       </div>
     </section>`);
 }
 
-function renderRoomLoading() {
+function renderRoomLoading(message = "Comprobando quién va en el coche…") {
   screen = "loading";
   frame(`
     <section class="stage">
-      <p class="eyebrow">Buscando la sala</p>
+      <p class="eyebrow">Arrancando motores</p>
       <div class="panel">
         <div class="loading-pulse" aria-label="Cargando sala"></div>
-        <p class="panel-copy center-copy">Comprobando quién va en el coche…</p>
+        <p class="panel-copy center-copy">${escapeHtml(message)}</p>
       </div>
     </section>`);
 }
@@ -166,43 +133,60 @@ function renderGuestJoin(error = "") {
 
 function renderLobby() {
   screen = "lobby";
-  const players = room?.players ?? [];
-  const emptySeats = Math.max(0, (room?.maxPlayers ?? 8) - players.length);
-  const myName = players.find((player) => player.id === playerId)?.name;
+  const passengers = room?.players.filter((player) => !player.isHost) ?? [];
+  const isHost = room?.players.some((player) => player.id === playerId && player.isHost) ?? false;
+  const hasStarted = room?.status === "started";
   frame(`
     <section class="stage stage-wide">
       <p class="eyebrow">Pasajeros a bordo</p>
       <div class="lobby-status">
         <span class="live-pill"><i class="${socketConnected ? "live-dot" : "live-dot offline"}"></i>${socketConnected ? "Conectado en directo" : "Reconectando…"}</span>
-        <span class="room-status">SALA DE ESPERA</span>
+        <span class="room-status">${hasStarted ? "VIAJE EN MARCHA" : "SALA DE ESPERA"}</span>
       </div>
       <div class="panel lobby-panel">
         <div class="panel-heading">
           <div>
-            <h1 class="panel-title">La cuadrilla</h1>
-            <p class="panel-copy">${myName ? `Dentro como ${escapeHtml(myName)}.` : "La noche empieza cuando estéis todos."}</p>
+            <h1 class="panel-title">${hasStarted ? "¡Buen viaje!" : "Código de Sala"}</h1>
+            <p class="panel-copy">${hasStarted ? "El viaje ya ha comenzado." : "Comparte el código para que suba la cuadrilla."}</p>
           </div>
-          <span class="radio-mark" aria-hidden="true">LIVE</span>
+          ${hasStarted ? "" : '<span class="radio-mark" aria-hidden="true">LIVE</span>'}
         </div>
-        <div class="room-code-wrap">
-          <div class="room-code-label">Código para invitar<span class="room-code">${escapeHtml(room?.code ?? roomCode)}</span></div>
-          <button class="copy-button" data-action="copy">${copied ? "Copiado" : "Copiar enlace"} <span aria-hidden="true">${copied ? "✓" : "↗"}</span></button>
+        <div class="room-code-wrap room-code-large">
+          <span class="room-code">${escapeHtml(room?.code ?? roomCode)}</span>
+          <button class="copy-button" data-action="copy" aria-label="Copiar enlace de invitación">${copied ? "Copiado" : "Copiar enlace"}</button>
         </div>
-        <div class="list-heading"><h2>En el coche</h2><span>${players.length} / ${room?.maxPlayers ?? 8} VIAJEROS</span></div>
-        <div class="player-list">
-          ${players.map((player, index) => `
+        <section class="passengers-section" aria-live="polite">
+          <h2 class="passengers-heading">Pasajeros subidos al coche:</h2>
+          <div class="player-list">
+          ${passengers.length ? passengers.map((player, index) => `
             <div class="player-row">
               <span class="player-avatar ${index % 2 ? "avatar-alt" : ""}">${escapeHtml(player.name.trim().slice(0, 1).toUpperCase())}</span>
-              <span class="player-name">${escapeHtml(player.name)}${player.isHost ? '<small class="host-tag">Al volante</small>' : ""}</span>
+              <span class="player-name">${escapeHtml(player.name)}</span>
               <span class="player-state ${player.connected ? "is-online" : ""}">${player.connected ? "Conectado" : "Ausente"}</span>
-            </div>`).join("")}
-          ${Array.from({ length: emptySeats }, () => '<div class="empty-seat"><span>+</span>Un asiento libre para alguien de la cuadrilla</div>').join("")}
-        </div>
-        <p class="wait-note">${notice ? escapeHtml(notice) : "La sala está abierta. Comparte el enlace y espera a que llegue tu gente."}</p>
-        <div class="lobby-actions">
-          <button class="button button-secondary" data-action="home">Salir de la sala</button>
-          <button class="button button-primary" data-action="copy">Invitar a la cuadrilla <span aria-hidden="true">↗</span></button>
-        </div>
+            </div>`).join("")
+            : '<p class="empty-passengers">Esperando a que los tolais suban al coche...</p>'}
+          </div>
+        </section>
+        ${notice ? `<p class="room-notice" role="status">${escapeHtml(notice)}</p>` : ""}
+        ${hasStarted
+          ? '<p class="trip-started" role="status">¡El viaje ha comenzado! ⚡</p>'
+          : isHost
+            ? '<button class="button button-primary start-trip-button" data-action="start">¡Empezar Viaje! ⚡</button>'
+            : '<p class="wait-note">Esperando a que el conductor empiece el viaje.</p>'}
+        ${hasStarted ? "" : `
+          <details class="join-existing">
+            <summary>¿Te han pasado un código? Únete a esa sala</summary>
+            <form class="form-stack join-code-form" data-form="join-existing">
+              <label class="field-label" for="join-name">Tu nombre
+                <input class="text-input" id="join-name" name="playerName" maxlength="24" minlength="1" autocomplete="nickname" required />
+              </label>
+              <label class="field-label" for="join-code">Código de sala
+                <input class="text-input input-code" id="join-code" name="code" maxlength="12" minlength="1" autocomplete="off" required />
+              </label>
+              <button class="button button-secondary" type="submit">Subirme al coche</button>
+            </form>
+          </details>`}
+        <button class="button button-text lobby-back" data-action="home">Volver al menú</button>
       </div>
     </section>`);
 }
@@ -247,11 +231,12 @@ function connectToRoom() {
   socket.on("room:update", update);
 }
 
-async function createGameRoom(playerName) {
+async function createGameRoom() {
+  renderRoomLoading("Creando una sala para la cuadrilla…");
   try {
     const entry = await apiRequest("/api/rooms", {
       method: "POST",
-      body: JSON.stringify({ playerName }),
+      body: JSON.stringify({ playerName: "Conductor" }),
     });
     roomCode = entry.room.code;
     playerId = entry.playerId;
@@ -261,7 +246,7 @@ async function createGameRoom(playerName) {
     connectToRoom();
     renderLobby();
   } catch (error) {
-    renderEntry("create", error.message);
+    renderRoomError(error.message);
   }
 }
 
@@ -281,7 +266,25 @@ async function joinGameRoom(code, playerName) {
     renderLobby();
   } catch (error) {
     if (screen === "guest") renderGuestJoin(error.message);
-    else renderEntry("join", error.message);
+    else {
+      notice = error.message;
+      renderLobby();
+    }
+  }
+}
+
+async function startTrip() {
+  if (!roomCode || !playerId) return;
+  notice = "";
+  try {
+    room = await apiRequest(`/api/rooms/${encodeURIComponent(roomCode)}/start`, {
+      method: "POST",
+      body: JSON.stringify({ playerId }),
+    });
+    renderLobby();
+  } catch (error) {
+    notice = error.message;
+    renderLobby();
   }
 }
 
@@ -343,10 +346,10 @@ app.addEventListener("click", (event) => {
   event.preventDefault();
   const action = button.dataset.action;
   if (action === "home") goHome();
-  else if (action === "create") renderEntry("create");
-  else if (action === "join") renderEntry("join");
+  else if (action === "create") createGameRoom();
   else if (action === "rules") renderRules();
   else if (action === "copy") copyInvite();
+  else if (action === "start") startTrip();
 });
 
 app.addEventListener("submit", (event) => {
@@ -356,8 +359,10 @@ app.addEventListener("submit", (event) => {
   const values = new FormData(form);
   const name = String(values.get("playerName") ?? "").trim();
   if (!name) return;
-  if (form.dataset.form === "create") createGameRoom(name);
-  if (form.dataset.form === "join") joinGameRoom(String(values.get("code") ?? ""), name);
+  if (form.dataset.form === "join-existing") {
+    const code = String(values.get("code") ?? "");
+    if (code.trim()) joinGameRoom(code, name);
+  }
   if (form.dataset.form === "direct-join") joinGameRoom(roomCode, name);
 });
 

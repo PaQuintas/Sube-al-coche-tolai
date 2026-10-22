@@ -13,3 +13,4 @@ export * from './gameRoomStatus';
 export * from './healthStatus';
 export * from './joinRoomInput';
 export * from './roomEntryResponse';
+export * from './startRoomInput';

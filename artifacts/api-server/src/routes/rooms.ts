@@ -7,9 +7,11 @@ import {
   JoinRoomBody,
   JoinRoomParams,
   JoinRoomResponse,
+  StartRoomBody,
+  StartRoomResponse,
 } from "@workspace/api-zod";
 import { broadcastRoom } from "../lib/game-socket";
-import { createRoom, getRoom, joinRoom } from "../lib/rooms";
+import { createRoom, getRoom, joinRoom, startRoom } from "../lib/rooms";
 
 const router: IRouter = Router();
 
@@ -55,16 +57,44 @@ router.post("/rooms/:code/join", (req, res) => {
 
   const result = joinRoom(code, playerName);
   if (!result.ok) {
-    const status = result.reason === "full" ? 409 : 404;
+    const status = result.reason === "not_found" ? 404 : 409;
     const message = result.reason === "full"
       ? "El coche ya está lleno."
-      : "No encontramos esa sala.";
+      : result.reason === "started"
+        ? "El viaje ya ha empezado."
+        : "No encontramos esa sala.";
     res.status(status).json({ error: message });
     return;
   }
 
   res.json(JoinRoomResponse.parse(result.entry));
   broadcastRoom(result.entry.room.code);
+});
+
+router.post("/rooms/:code/start", (req, res) => {
+  const { code } = JoinRoomParams.parse(req.params);
+  const body = StartRoomBody.safeParse(req.body);
+  if (!body.success) {
+    res.status(400).json({ error: "No se pudo validar el conductor de la sala." });
+    return;
+  }
+
+  const result = startRoom(code, body.data.playerId);
+  if (!result.ok) {
+    const status = result.reason === "not_found" ? 404
+      : result.reason === "not_host" ? 403
+        : 409;
+    const message = result.reason === "not_found"
+      ? "No encontramos esa sala o ese jugador."
+      : result.reason === "not_host"
+        ? "Solo quien conduce puede empezar el viaje."
+        : "El viaje ya ha empezado.";
+    res.status(status).json({ error: message });
+    return;
+  }
+
+  res.json(StartRoomResponse.parse(result.room));
+  broadcastRoom(result.room.code);
 });
 
 export default router;

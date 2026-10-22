@@ -39,7 +39,7 @@ export const CreateRoomResponse = zod.object({
   "connected": zod.boolean()
 })),
   "maxPlayers": zod.number().int(),
-  "status": zod.enum(['waiting'])
+  "status": zod.enum(['waiting', 'started'])
 })
 })
 
@@ -60,7 +60,7 @@ export const GetRoomResponse = zod.object({
   "connected": zod.boolean()
 })),
   "maxPlayers": zod.number().int(),
-  "status": zod.enum(['waiting'])
+  "status": zod.enum(['waiting', 'started'])
 })
 
 
@@ -90,8 +90,32 @@ export const JoinRoomResponse = zod.object({
   "connected": zod.boolean()
 })),
   "maxPlayers": zod.number().int(),
-  "status": zod.enum(['waiting'])
+  "status": zod.enum(['waiting', 'started'])
 })
+})
+
+
+/**
+ * @summary Start the trip
+ */
+export const StartRoomParams = zod.object({
+  "code": zod.coerce.string()
+})
+
+export const StartRoomBody = zod.object({
+  "playerId": zod.string()
+})
+
+export const StartRoomResponse = zod.object({
+  "code": zod.string(),
+  "players": zod.array(zod.object({
+  "id": zod.string(),
+  "name": zod.string(),
+  "isHost": zod.boolean(),
+  "connected": zod.boolean()
+})),
+  "maxPlayers": zod.number().int(),
+  "status": zod.enum(['waiting', 'started'])
 })
 
 

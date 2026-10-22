@@ -11,4 +11,5 @@ export type GameRoomStatus = typeof GameRoomStatus[keyof typeof GameRoomStatus];
 
 export const GameRoomStatus = {
   waiting: 'waiting',
+  started: 'started',
 } as const;
