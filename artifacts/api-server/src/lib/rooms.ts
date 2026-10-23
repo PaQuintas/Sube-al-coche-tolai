@@ -35,9 +35,11 @@ function cleanOldRooms() {
 }
 
 function createRoomCode(): string {
+  const alphabet = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";
   let code = "";
   do {
-    code = `TOLAI${String(randomInt(0, 1000)).padStart(3, "0")}`;
+    const suffix = Array.from({ length: 4 }, () => alphabet[randomInt(alphabet.length)]).join("");
+    code = `TOLAS${suffix}`;
   } while (rooms.has(code));
   return code;
 }
