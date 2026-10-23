@@ -317,7 +317,28 @@ function renderResults() {
     </div>
   </section>`);
 }
+function renderRoom() {
+  if (!room) {
+    renderMenu();
+    return;
+  }
 
+  if (room.phase === "DECISION") {
+    renderDecision();
+  } else if (
+    room.phase === "RESULTS" ||
+    room.phase === "ROUND_OVER" ||
+    room.phase === "GAME_OVER" ||
+    room.phase === "FINISHED" ||
+    Boolean(room.game?.outcome)
+  ) {
+    renderResults();
+  } else if (room.phase === "BETTING" || Boolean(room.game)) {
+    renderGame();
+  } else {
+    renderLobby();
+  }
+}
 function setRoom(value) {
   room = value;
   if (value?.code && session) {
