@@ -294,21 +294,28 @@ function renderResults() {
             <tbody>${rows}</tbody>
           </table>
         </div>
-        ${isHost
-          ? `<button class="button button-primary start-trip-button" data-action="next-round" ${busy ? "disabled" : ""}>Siguiente ronda ↻</button>`
-          : '<p class="wait-note">Esperando a que el anfitrión abra la siguiente ronda.</p>'}
-        ${notice ? `<p class="room-notice" role="alert">${escapeHtml(notice)}</p>` : ""}
-        <button class="button button-text" data-action="leave-room">Salir de la partida</button>
-      </div>
-    </section>`);
-}
-
-function renderRoom() {
-  if (!room) return renderMenu();
-  if (room.phase === "LOBBY") return renderLobby();
-  if (room.phase === "BETTING") return renderGame();
-  if (room.phase === "DECISION") return renderDecision();
-  return renderResults();
+  ${(() => {
+        if (room.roundNumber < 20) return "";
+        const sorted = [...(room.players || [])].sort((a, b) => (room.scores?.[b.id] ?? 0) - (room.scores?.[a.id] ?? 0));
+        const winner = sorted[0];
+        const winnerScore = room.scores?.[winner?.id] ?? 0;
+        return `
+          <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 22px; border-radius: 16px; text-align: center; margin: 18px 0; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);">
+            <div style="font-size: 46px; margin-bottom: 6px;">🏆👑🏆</div>
+            <h2 style="font-size: 24px; font-weight: 900; margin: 0; text-transform: uppercase;">¡FIN DE LA PARTIDA!</h2>
+            <p style="font-size: 19px; font-weight: 700; margin: 10px 0 0 0;">
+              ¡Campeón/a: <span style="text-decoration: underline;">${escapeHtml(winner?.name ?? "Jugador")}</span> con ${winnerScore} puntos!
+            </p>
+          </div>
+        `;
+      })()}
+      ${isHost
+        ? `<button class="button button-primary start-trip-button" data-action="next-round" ${busy ? "disabled" : ""}>${room.roundNumber >= 20 ? "🏆 Volver a la sala (Nueva partida)" : "Siguiente ronda ↻"}</button>`
+        : `<p class="wait-note">${room.roundNumber >= 20 ? "¡Partida terminada! Esperando al anfitrión para volver a la sala." : "Esperando a que el anfitrión abra la siguiente ronda."}</p>`}
+      ${notice ? `<p class="room-notice" role="alert">${escapeHtml(notice)}</p>` : ""}
+      <button class="button button-text" data-action="leave-room">Salir de la partida</button>
+    </div>
+  </section>`);
 }
 
 function setRoom(value) {
