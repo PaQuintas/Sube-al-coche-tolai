@@ -38,7 +38,8 @@ const clientDist = path.resolve(process.cwd(), "artifacts/sube-al-coche/dist/pub
 
 app.use(express.static(clientDist));
 
-app.get("*", (_req, res) => {
+// Fallback universal para cualquier ruta
+app.use((_req, res) => {
   const indexPath = path.join(clientDist, "index.html");
   if (fs.existsSync(indexPath)) {
     res.sendFile(indexPath);
