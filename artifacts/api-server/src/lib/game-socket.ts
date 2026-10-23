@@ -22,6 +22,8 @@ interface Player {
   name: string;
   socketId: string;
   connected: boolean;
+  hasActed: boolean;
+  folded: boolean;
 }
 
 interface RoundScore {
@@ -94,6 +96,8 @@ function roomSnapshot(room: Room) {
       name: player.name,
       connected: player.connected,
       isHost: player.id === room.hostPlayerId,
+      hasActed: player.hasActed,
+      folded: player.folded,
     })),
     game: {
       question: room.question?.text ?? "",
@@ -136,6 +140,22 @@ function nextConnectedIndex(room: Room, fromIndex: number): number {
     if (room.players[index]?.connected) return index;
   }
   return -1;
+}
+
+function nextActiveIndex(room: Room, fromIndex: number): number {
+  for (let offset = 1; offset <= room.players.length; offset += 1) {
+    const index = (fromIndex + offset + room.players.length) % room.players.length;
+    const player = room.players[index];
+    if (player?.connected && !player.folded) return index;
+  }
+  return -1;
+}
+
+function auctionShouldClose(room: Room): boolean {
+  if (!room.captainId) return false;
+  return room.players.every((player) =>
+    player.id === room.captainId || player.folded || !player.connected
+  );
 }
 
 function decisionsAreComplete(room: Room): boolean {
@@ -219,6 +239,10 @@ function startRound(room: Room, starterId: string) {
   room.decisions = {};
   room.latestResults = null;
   room.latestOutcome = null;
+  for (const player of room.players) {
+    player.hasActed = false;
+    player.folded = !player.connected;
+  }
   emitRoomState(room);
   return true;
 }
@@ -281,7 +305,14 @@ export function attachGameSocket(server: HttpServer) {
         const room: Room = {
           code,
           hostPlayerId: playerId,
-          players: [{ id: playerId, name: playerName, socketId: socket.id, connected: true }],
+          players: [{
+            id: playerId,
+            name: playerName,
+            socketId: socket.id,
+            connected: true,
+            hasActed: false,
+            folded: false,
+          }],
           phase: "LOBBY",
           question: null,
           currentBid: 0,
@@ -331,6 +362,8 @@ export function attachGameSocket(server: HttpServer) {
           name: cleanPlayerName(payload?.playerName),
           socketId: socket.id,
           connected: true,
+          hasActed: false,
+          folded: false,
         };
         room.players.push(player);
         room.scores[playerId] = 0;
@@ -358,6 +391,7 @@ export function attachGameSocket(server: HttpServer) {
         player.socketId = socket.id;
         setRoomHost(room);
         if (room.phase === "BETTING" && !room.turnPlayerId) {
+          if (!room.captainId) player.folded = false;
           room.turnPlayerId = player.id;
         }
         socket.join(room.code);
@@ -393,7 +427,7 @@ export function attachGameSocket(server: HttpServer) {
         const room = typeof payload?.roomCode === "string" ? rooms.get(payload.roomCode) : undefined;
         const player = room && playerForSocket(room, socket.id);
         const bet = Number(payload?.bet);
-        if (!room || room.phase !== "BETTING" || !player) {
+        if (!room || room.phase !== "BETTING" || !player || player.folded) {
           reply(ack, { success: false, message: "La puja ya no está abierta." });
           return;
         }
@@ -401,21 +435,28 @@ export function attachGameSocket(server: HttpServer) {
           reply(ack, { success: false, message: "Espera a que llegue tu turno." });
           return;
         }
+        const isTriplazo = payload?.isTriplazo === true;
+        if (isTriplazo && player.hasActed) {
+          reply(ack, { success: false, message: "TRIPLAZO solo se puede hacer en tu primer turno de la ronda." });
+          return;
+        }
         if (!Number.isSafeInteger(bet) || bet <= room.currentBid || bet < 1) {
           reply(ack, { success: false, message: "La apuesta debe ser un número mayor que la actual." });
           return;
         }
 
-        const isTriplazo = payload?.isTriplazo === true;
+        player.hasActed = true;
         room.currentBid = bet;
         room.captainId = player.id;
         room.isTriplazo = isTriplazo;
 
         if (isTriplazo) {
           enterDecisionPhase(room);
+        } else if (auctionShouldClose(room)) {
+          enterDecisionPhase(room);
         } else {
           const playerIndex = room.players.findIndex((entry) => entry.id === player.id);
-          const nextIndex = nextConnectedIndex(room, playerIndex);
+          const nextIndex = nextActiveIndex(room, playerIndex);
           room.turnPlayerId = room.players[nextIndex]?.id ?? null;
           emitRoomState(room);
         }
@@ -423,23 +464,33 @@ export function attachGameSocket(server: HttpServer) {
       },
     );
 
-    socket.on("closeAuction", (payload: { roomCode?: unknown }, ack?: Ack) => {
+    socket.on("playerStand", (payload: { roomCode?: unknown }, ack?: Ack) => {
       const room = typeof payload?.roomCode === "string" ? rooms.get(payload.roomCode) : undefined;
       const player = room && playerForSocket(room, socket.id);
-      if (!room || room.phase !== "BETTING" || !player) {
-        reply(ack, { success: false, message: "La puja no está abierta." });
+      if (!room || room.phase !== "BETTING" || !player || player.folded) {
+        reply(ack, { success: false, message: "Ya no puedes plantarte en esta ronda." });
         return;
       }
       if (player.id !== room.turnPlayerId) {
-        reply(ack, { success: false, message: "Solo quien tiene el turno puede cerrar la puja." });
+        reply(ack, { success: false, message: "Espera a que llegue tu turno." });
         return;
       }
-      if (!room.captainId || room.currentBid < 1) {
-        reply(ack, { success: false, message: "Primero alguien tiene que subir la apuesta." });
+      const activePlayers = room.players.filter((entry) => entry.connected && !entry.folded);
+      if (!room.captainId && activePlayers.length <= 1) {
+        reply(ack, { success: false, message: "Tiene que quedar alguien para hacer la primera puja." });
         return;
       }
 
-      enterDecisionPhase(room);
+      player.folded = true;
+      player.hasActed = true;
+      if (auctionShouldClose(room)) {
+        enterDecisionPhase(room);
+      } else {
+        const playerIndex = room.players.findIndex((entry) => entry.id === player.id);
+        const nextIndex = nextActiveIndex(room, playerIndex);
+        room.turnPlayerId = room.players[nextIndex]?.id ?? null;
+        emitRoomState(room);
+      }
       reply(ack, { success: true, room: roomSnapshot(room) });
     });
 
@@ -510,10 +561,21 @@ export function attachGameSocket(server: HttpServer) {
         if (!player) continue;
         player.connected = false;
 
-        if (room.phase === "BETTING" && room.turnPlayerId === player.id) {
-          const playerIndex = room.players.findIndex((entry) => entry.id === player.id);
-          const nextIndex = nextConnectedIndex(room, playerIndex);
-          room.turnPlayerId = room.players[nextIndex]?.id ?? null;
+        if (room.phase === "BETTING") {
+          player.folded = true;
+          player.hasActed = true;
+          if (room.turnPlayerId === player.id) {
+            const playerIndex = room.players.findIndex((entry) => entry.id === player.id);
+            const nextIndex = nextActiveIndex(room, playerIndex);
+            room.turnPlayerId = room.players[nextIndex]?.id ?? null;
+          }
+          setRoomHost(room);
+          if (auctionShouldClose(room)) {
+            enterDecisionPhase(room);
+          } else {
+            emitRoomState(room);
+          }
+          break;
         } else if (room.phase === "DECISION" && player.id !== room.captainId) {
           room.decisions[player.id] = "LEAVE";
         }

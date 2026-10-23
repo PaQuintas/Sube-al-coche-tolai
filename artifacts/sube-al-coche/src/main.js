@@ -5,18 +5,17 @@ import "./game.css";
 const app = document.querySelector("#app");
 const NAMES = ["Amador", "Hindemith", "El Susurrador", "Mitsu", "Alevín01", "Josué"];
 const SESSION_KEY = "sube-al-coche-session";
-const inviteCode = new URLSearchParams(window.location.search).get("room")?.trim().toUpperCase() ?? "";
 
 document.documentElement.style.setProperty("--night-road-image", `url("${backgroundUrl}")`);
 
 let socketConnected = false;
 let busy = false;
-let screen = inviteCode ? "entry" : "menu";
+let screen = "menu";
 let notice = "";
 let room = null;
 let session = readSession();
 let entryName = randomName();
-let entryCode = inviteCode;
+let entryCode = "";
 
 function readSession() {
   try {
@@ -107,7 +106,7 @@ function renderEntry() {
         <div class="entry-divider"><span>o únete a tus amigos</span></div>
         <form class="form-stack join-entry-form" data-form="join-room">
           <label class="field-label" for="room-code">Código de sala
-            <input class="text-input input-code" id="room-code" name="roomCode" maxlength="9" minlength="9" value="${escapeHtml(entryCode)}" placeholder="TOLAS7B2A" autocomplete="off" required />
+            <input class="text-input input-code" id="room-code" name="roomCode" maxlength="9" minlength="9" value="${escapeHtml(entryCode)}" autocomplete="off" required />
           </label>
           <button class="button button-secondary" type="submit" ${busy ? "disabled" : ""}>Unirme al coche</button>
         </form>
@@ -126,10 +125,12 @@ function renderRules() {
       <div class="panel rules-panel">
         <ol class="rules-list">
           <li><span class="rule-number">01</span><span>El anfitrión crea una sala y comparte el código TOLAS con hasta 7 amigos más.</span></li>
-          <li><span class="rule-number">02</span><span>Por turnos, subid la apuesta numérica. Quien tenga el turno también puede cerrar la puja; un TRIPLAZO cierra la puja al instante.</span></li>
-          <li><span class="rule-number">03</span><span>Cuando se cierra la puja, cada pasajero decide si se queda dentro o se baja. El capitán se queda en el coche.</span></li>
-          <li><span class="rule-number">04</span><span>Si la apuesta no supera la respuesta, el coche llega: capitán +3 (o +5 con TRIPLAZO), pasajeros dentro +2 (o +3 con TRIPLAZO), quienes bajaron 0.</span></li>
-          <li><span class="rule-number">05</span><span>Si la apuesta supera la respuesta, hay siniestro: capitán −2 (o −4 con TRIPLAZO), pasajeros dentro −2 y quienes bajaron +2.</span></li>
+          <li><span class="rule-number">02</span><span>En tu turno, sube la apuesta con un número mayor al actual o plántate para quedar fuera de las pujas de esta ronda.</span></li>
+          <li><span class="rule-number">03</span><span>TRIPLAZO solo está disponible en tu primer turno de la ronda y cierra la puja inmediatamente.</span></li>
+          <li><span class="rule-number">04</span><span>Sin TRIPLAZO, la puja se cierra cuando todos se han plantado excepto el último que pujó: esa persona es el Capitán.</span></li>
+          <li><span class="rule-number">05</span><span>Al cerrarse la puja, el Capitán se queda dentro automáticamente y los demás pasajeros deciden si siguen dentro o se bajan.</span></li>
+          <li><span class="rule-number">06</span><span>Si la apuesta no supera la respuesta, el coche llega: capitán +3 (o +5 con TRIPLAZO), pasajeros dentro +2 (o +3 con TRIPLAZO), quienes bajaron 0.</span></li>
+          <li><span class="rule-number">07</span><span>Si la apuesta supera la respuesta, hay siniestro: capitán −2 (o −4 con TRIPLAZO), pasajeros dentro −2 y quienes bajaron +2.</span></li>
         </ol>
         <button class="button button-primary rules-back" data-action="menu">Volver al menú</button>
       </div>
@@ -143,10 +144,23 @@ function currentPlayer() {
 function renderPlayers() {
   return (room?.players ?? []).map((player) => {
     const score = room.game?.scores?.[player.id] ?? 0;
+    const status = !player.connected
+      ? "Desconectado"
+      : room.phase === "BETTING"
+        ? player.folded
+          ? "Plantado"
+          : player.id === room.game.turnPlayerId
+            ? "Su turno"
+            : player.hasActed
+              ? "Ha pujado"
+              : "En puja"
+        : room.phase === "DECISION" && room.game.submittedPlayerIds.includes(player.id)
+          ? "Decisión lista"
+          : "En línea";
     return `<div class="player-row">
       <span class="player-avatar">${escapeHtml(player.name.slice(0, 1).toUpperCase())}</span>
       <span class="player-name">${escapeHtml(player.name)}${player.isHost ? '<span class="host-tag">Anfitrión</span>' : ""}</span>
-      <span class="player-state ${player.connected ? "is-online" : ""}">${player.connected ? "En línea" : "Desconectado"}</span>
+      <span class="player-state ${player.connected ? "is-online" : ""}">${status}</span>
       <strong class="score-chip">${score} pts</strong>
     </div>`;
   }).join("");
@@ -188,7 +202,8 @@ function renderGame() {
   const game = room.game;
   const me = currentPlayer();
   const isMyTurn = me?.id === game.turnPlayerId;
-  const hasCaptain = Boolean(game.captainId);
+  const activePlayers = room.players.filter((player) => player.connected && !player.folded).length;
+  const canStand = Boolean(game.captainId) || activePlayers > 1;
   render(`
     <section class="stage stage-wide game-stage">
       <p class="eyebrow">RONDA ${game.roundNumber} · PUJAS POR TURNOS</p>
@@ -210,11 +225,11 @@ function renderGame() {
           </label>
           <div class="game-actions">
             <button class="button button-primary" data-action="raise-bet" ${busy ? "disabled" : ""}>Subir apuesta</button>
-            <button class="button triplazo-button" data-action="triplazo" ${busy ? "disabled" : ""}>TRIPLAZO ⚡</button>
-            ${hasCaptain ? '<button class="button button-secondary" data-action="close-auction" ' + (busy ? "disabled" : "") + '>Cerrar puja</button>' : ""}
+            <button class="button button-secondary" data-action="plant" ${busy || !canStand ? "disabled" : ""}>Plantarse</button>
+            ${me?.hasActed ? "" : `<button class="button triplazo-button" data-action="triplazo" ${busy ? "disabled" : ""}>TRIPLAZO ⚡</button>`}
           </div>
-          <p class="wait-note">Con TRIPLAZO se cierra la puja inmediatamente. Cerrar la puja mantiene la apuesta actual.</p>
-        ` : '<p class="wait-note">Espera tu turno para subir la apuesta, hacer TRIPLAZO o cerrar la puja.</p>'}
+          <p class="wait-note">${!canStand ? "Aún no hay una apuesta; alguien tendrá que pujar para que la ronda pueda cerrarse." : me?.hasActed ? "Ya usaste tu primer turno: TRIPLAZO no está disponible." : "TRIPLAZO solo se puede usar en tu primer turno y cierra la puja."} Plantarse te deja fuera de las pujas de esta ronda.</p>
+        ` : '<p class="wait-note">Espera tu turno para subir la apuesta, plantarte o hacer TRIPLAZO si aún es tu primer turno.</p>'}
         ${notice ? `<p class="room-notice" role="alert">${escapeHtml(notice)}</p>` : ""}
       </div>
       <div class="player-list game-player-list">${renderPlayers()}</div>
@@ -383,7 +398,7 @@ app?.addEventListener("submit", (event) => {
   } else if (form.dataset.form === "join-room") {
     const roomCode = new FormData(form).get("roomCode")?.toString().trim().toUpperCase() ?? "";
     if (!/^TOLAS[A-Z0-9]{4}$/.test(roomCode)) {
-      notice = "El código debe tener el formato TOLAS7B2A.";
+      notice = "El código debe empezar por TOLAS y tener 9 caracteres.";
       renderEntry();
       return;
     }
@@ -406,6 +421,7 @@ app?.addEventListener("click", (event) => {
 
   if (action === "play") {
     notice = "";
+    entryCode = "";
     renderEntry();
   } else if (action === "rules") {
     renderRules();
@@ -436,8 +452,8 @@ app?.addEventListener("click", (event) => {
       return;
     }
     emitWithAck("playerBet", { roomCode: room.code, bet, isTriplazo: action === "triplazo" });
-  } else if (action === "close-auction") {
-    emitWithAck("closeAuction", { roomCode: room.code });
+  } else if (action === "plant") {
+    emitWithAck("playerStand", { roomCode: room.code });
   } else if (action === "stay" || action === "leave") {
     emitWithAck("submitDecision", { roomCode: room.code, decision: action === "stay" ? "STAY" : "LEAVE" });
   } else if (action === "next-round") {
@@ -491,8 +507,6 @@ socket.on("gameError", (payload) => {
 if (session) {
   screen = "connecting";
   render(`<section class="stage"><p class="eyebrow">RECONECTANDO</p><h1 class="screen-title">Volviendo a la sala…</h1>${connectionNote()}</section>`);
-} else if (inviteCode) {
-  renderEntry();
 } else {
   renderMenu();
 }
