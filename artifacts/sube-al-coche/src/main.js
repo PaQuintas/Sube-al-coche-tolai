@@ -295,10 +295,18 @@ function renderResults() {
           </table>
         </div>
   ${(() => {
-        if (room.roundNumber < 20) return "";
-        const sorted = [...(room.players || [])].sort((a, b) => (room.scores?.[b.id] ?? 0) - (room.scores?.[a.id] ?? 0));
+// Detectamos la ronda actual se llame como se llame en el servidor
+        const currentRound = room.roundNumber ?? room.round ?? room.game?.roundNumber ?? room.game?.round ?? 1;
+
+        // Si no hemos llegado a la ronda 20, no mostramos el cartel de fin de partida
+        if (currentRound < 20) return "";
+
+        // Función para leer los puntos reales de cada jugador
+        const getScore = (p) => p.score ?? p.totalScore ?? p.points ?? room.scores?.[p.id] ?? 0;
+        const sorted = [...(room.players || [])].sort((a, b) => getScore(b) - getScore(a));
         const winner = sorted[0];
-        const winnerScore = room.scores?.[winner?.id] ?? 0;
+        const winnerScore = winner ? getScore(winner) : 0;
+
         return `
           <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 22px; border-radius: 16px; text-align: center; margin: 18px 0; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);">
             <div style="font-size: 46px; margin-bottom: 6px;">🏆👑🏆</div>
@@ -310,10 +318,10 @@ function renderResults() {
         `;
       })()}
       ${isHost
-        ? `<button class="button button-primary start-trip-button" data-action="next-round" ${busy ? "disabled" : ""}>${room.roundNumber >= 20 ? "🏆 Volver a la sala (Nueva partida)" : "Siguiente ronda ↻"}</button>`
-        : `<p class="wait-note">${room.roundNumber >= 20 ? "¡Partida terminada! Esperando al anfitrión para volver a la sala." : "Esperando a que el anfitrión abra la siguiente ronda."}</p>`}
+        ? `<button class="button button-primary start-trip-button" data-action="next-round" ${busy ? "disabled" : ""}>${(room.roundNumber ?? room.round ?? room.game?.roundNumber ?? room.game?.round ?? 1) >= 20 ? "🏆 Volver a la sala (Nueva partida)" : "Siguiente ronda ↻"}</button>`
+        : `<p class="wait-note">${(room.roundNumber ?? room.round ?? room.game?.roundNumber ?? room.game?.round ?? 1) >= 20 ? "¡Partida terminada! Esperando al anfitrión para volver a la sala." : "Esperando a que el anfitrión abra la siguiente ronda."}</p>`}
       ${notice ? `<p class="room-notice" role="alert">${escapeHtml(notice)}</p>` : ""}
-      <button class="button button-text" data-action="leave-room">Salir de la partida</button>
+<button class="button button-text" data-action="leave-room" style="margin-top: 35px; opacity: 0.8; font-size: 14px;">Salir de la partida</button>
     </div>
   </section>`);
 }
@@ -323,9 +331,20 @@ function renderRoom() {
     return;
   }
 
+  // 1. Si estamos en la sala de espera, SIEMPRE mostramos el Lobby
+  if (room.phase === "LOBBY" || !room.phase) {
+    renderLobby();
+    return;
+  }
+
+  // 2. Si estamos en fase de tomar decisión
   if (room.phase === "DECISION") {
     renderDecision();
-  } else if (
+    return;
+  }
+
+  // 3. Si la ronda o partida ha terminado, mostramos resultados
+  if (
     room.phase === "RESULTS" ||
     room.phase === "ROUND_OVER" ||
     room.phase === "GAME_OVER" ||
@@ -333,11 +352,11 @@ function renderRoom() {
     Boolean(room.game?.outcome)
   ) {
     renderResults();
-  } else if (room.phase === "BETTING" || Boolean(room.game)) {
-    renderGame();
-  } else {
-    renderLobby();
+    return;
   }
+
+  // 4. Para cualquier otra fase del juego activa (apuestas, preguntas...), mostramos el juego
+  renderGame();
 }
 function setRoom(value) {
   room = value;
@@ -485,8 +504,9 @@ app?.addEventListener("click", (event) => {
   } else if (action === "stay" || action === "leave") {
     emitWithAck("submitDecision", { roomCode: room.code, decision: action === "stay" ? "STAY" : "LEAVE" });
   } else if (action === "next-round") {
-    emitWithAck("nextRound", { roomCode: room.code });
+emitWithAck("nextRound", { roomCode: room.code });
   } else if (action === "leave-room") {
+    if (!confirm("¿Asín vas a ser de salirte?")) return;
     leaveCurrentRoom();
   }
 });
