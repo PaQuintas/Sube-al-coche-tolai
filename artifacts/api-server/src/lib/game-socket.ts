@@ -1,6 +1,7 @@
 import { randomInt, randomUUID } from "node:crypto";
 import type { Server as HttpServer } from "node:http";
 import { Server, Socket } from "socket.io";
+import { io } from "socket.io-client";
 
 const PREGUNTAS = [
 // ==========================================
@@ -359,7 +360,7 @@ const PREGUNTAS = [
 { texto: "¿Cuántos aviones comerciales secuestraron los terroristas en los atentados del 11-S de 2001?", valor: 4 },
 { texto: "¿Cuántos años de régimen legal de segregación racial ('apartheid') rigieron en Sudáfrica (1948-1994)?", valor: 46 },
 { texto: "¿Cuántos años ininterrumpidos permaneció en prisión el activista y líder sudafricano Nelson Mandela?", valor: 27 },
-{ texto: "¿Hace cuántos años falleció el dictador Francisco Franco, marcando el inicio de la Transición española?", valor: 49 },
+{ texto: "¿Hace cuántos años falleció el dictador Francisco Franco, marcando el inicio de la Transición española?", valor: 51 },
 { texto: "¿Hace cuántos años tuvo lugar el intento de golpe de Estado militar del 23-F en España?", valor: 43 },
 { texto: "¿Cuántos días duró la experiencia revolucionaria de la Comuna de París en 1871?", valor: 72 },
 { texto: "¿Cuántos soldados espartanos resistieron junto al rey Leónidas en el paso de las Termópilas?", valor: 300 },
@@ -404,6 +405,78 @@ const PREGUNTAS = [
 { texto: "¿Cuántos días duró el mandato del papa Juan Pablo I antes de su repentino fallecimiento en 1978?", valor: 33 },
 { texto: "¿Cuántos años tenía Juana de Arco cuando murió en la hoguera de Ruan en 1431?", valor: 19 },
 { texto: "¿Cuántas personas integraban el primer grupo de colonos puritanos del Mayflower en 1620?", valor: 102 },
+  // --- FÚTBOL Y LEYENDAS (MESSI, CRISTIANO, RIBÉRY, CLUBES) ---
+  { texto: "¿Cuántos goles oficiales anotó Leo Messi en el año natural 2012 (récord mundial Guinness)?", valor: 91 },
+  { texto: "¿Cuántos Balones de Oro ha ganado Lionel Messi en su carrera?", valor: 8 },
+  { texto: "¿Cuántas Botas de Oro europeas ha ganado Lionel Messi en su carrera?", valor: 6 },
+  { texto: "¿Cuántos goles oficiales anotó Cristiano Ronaldo en la historia de la UEFA Champions League?", valor: 140 },
+  { texto: "¿Cuántos Balones de Oro ha ganado Cristiano Ronaldo en su carrera?", valor: 5 },
+  { texto: "¿Cuántos títulos oficiales conquistó Franck Ribéry durante su etapa en el Bayern de Múnich?", valor: 24 },
+  { texto: "¿Cuántos goles oficiales marcó Franck Ribéry con la selección absoluta de Francia?", valor: 16 },
+  { texto: "¿En qué año se fundó el Sevilla Fútbol Club según sus estatutos oficiales?", valor: 1890 },
+  { texto: "¿En qué año se fundó el Athletic Club de Bilbao?", valor: 1898 },
+  { texto: "¿En qué año se fundó el Fútbol Club Barcelona?", valor: 1899 },
+  { texto: "¿En qué año se fundó el Real Madrid Club de Fútbol?", valor: 1902 },
+  { texto: "¿En qué año se fundó el Club Atlético de Madrid?", valor: 1903 },
+  { texto: "¿En qué año se fundó el Real Betis Balompié?", valor: 1907 },
+  { texto: "¿En qué año se fundó el Recreativo de Huelva, el club decano del fútbol español?", valor: 1889 },
+  { texto: "¿En qué año se fundó el Liverpool Football Club?", valor: 1892 },
+  { texto: "¿En qué año se fundó la Juventus de Turín?", valor: 1897 },
+  { texto: "¿En qué año se fundó el Manchester United (originalmente Newton Heath)?", valor: 1878 },
+
+  // --- POLIDEPORTIVO (NADAL, BASKET, GOLF) ---
+  { texto: "¿Cuántos títulos de Roland Garros ha ganado Rafael Nadal a lo largo de su carrera?", valor: 14 },
+  { texto: "¿Cuántos torneos de Grand Slam individuales en total ha ganado Rafael Nadal?", valor: 22 },
+  { texto: "¿Cuántos torneos 'Majors' de golf profesional ganó Jack Nicklaus (récord histórico)?", valor: 18 },
+  { texto: "¿Cuántos torneos 'Majors' de golf profesional ha ganado Tiger Woods?", valor: 15 },
+  { texto: "¿Cuántos hoyos componen una vuelta reglamentaria en un campo de golf estándar?", valor: 18 },
+  { texto: "¿Cuántos puntos anotó Wilt Chamberlain en un solo partido de la NBA en 1962 (récord histórico)?", valor: 100 },
+  { texto: "¿Cuántos puntos anotó Kobe Bryant contra los Raptors en enero de 2006 (segunda mayor anotación NBA)?", valor: 81 },
+  { texto: "¿Cuántos anillos de campeón de la NBA ganó Bill Russell como jugador (récord histórico)?", valor: 11 },
+  { texto: "¿Cuántos anillos de campeón de la NBA ganó Michael Jordan con los Chicago Bulls?", valor: 6 },
+  { texto: "¿Cuántos kilómetros de distancia tiene una maratón oficial (número entero sin decimales)?", valor: 42 },
+  { texto: "¿Cuántos centímetros de diámetro mide reglamentariamente un aro de baloncesto NBA y FIBA?", valor: 45 },
+  { texto: "¿Cuántos minutos reglamentarios dura un partido oficial de rugby?", valor: 80 },
+
+  // --- CUENTAS MATEMÁTICAS EXACTAS ---
+  { texto: "¿Cuánto es exactamente 17 multiplicado por 19?", valor: 323 },
+  { texto: "¿Cuánto es exactamente 14 multiplicado por 18?", valor: 252 },
+  { texto: "¿Cuánto es 2 elevado a la potencia de 10 (2¹⁰)?", valor: 1024 },
+  { texto: "¿Cuánto es 7 elevado al cubo (7 x 7 x 7)?", valor: 343 },
+  { texto: "¿Cuánto es 25 elevado al cuadrado (25 x 25)?", valor: 625 },
+  { texto: "¿Cuánto es 35 multiplicado por 12?", valor: 420 },
+  { texto: "¿Cuánto es 16 multiplicado por 16?", valor: 256 },
+  { texto: "¿Cuánto es 1000 dividido entre 8?", valor: 125 },
+  { texto: "¿Cuánto es el factorial de 5 (5 x 4 x 3 x 2 x 1)?", valor: 120 },
+  { texto: "¿Cuánto es el factorial de 6 (6 x 5 x 4 x 3 x 2 x 1)?", valor: 720 },
+  { texto: "¿Cuánto suman todos los números enteros del 1 al 20 inclusive?", valor: 210 },
+
+  // --- MÚSICA CLÁSICA Y SINFONÍAS ---
+  { texto: "¿Cuántas sinfonías completas compuso Ludwig van Beethoven?", valor: 9 },
+  { texto: "¿Cuántas sinfonías numeradas compuso Wolfgang Amadeus Mozart?", valor: 41 },
+  { texto: "¿Cuántas sinfonías compuso Joseph Haydn, conocido como el padre de la sinfonía?", valor: 104 },
+  { texto: "¿Cuántas sinfonías numeradas compuso el maestro ruso Piotr Ilich Chaikovski?", valor: 6 },
+  { texto: "¿Cuántas sinfonías completó en vida el compositor Gustav Mahler?", valor: 9 },
+  { texto: "¿Cuántas sinfonías numeradas dejó compuestas Antonín Dvořák?", valor: 9 },
+  { texto: "¿Cuántas teclas en total tiene un piano acústico estándar de cola o pared?", valor: 88 },
+  { texto: "¿Cuántas cuerdas tiene un arpa clásica de concierto estándar?", valor: 47 },
+
+  // --- FUMADAS, CURIOSIDADES Y TRIVIA VARIADA ---
+  { texto: "¿Cuántos huesos forman el esqueleto completo de un ser humano adulto?", valor: 206 },
+  { texto: "¿Cuántos dientes tiene un adulto con la dentadura completa (incluidas las 4 muelas del juicio)?", valor: 32 },
+  { texto: "¿Cuántos pisos en total tiene el emblemático rascacielos Empire State Building de Nueva York?", valor: 102 },
+  { texto: "¿Cuántos estados soberanos son miembros oficiales de la Organización de las Naciones Unidas (ONU)?", valor: 193 },
+  { texto: "¿Cuántos corazones bombean sangre en el cuerpo de un pulpo?", valor: 3 },
+  { texto: "¿Cuántos brazos o tentáculos tiene en total un calamar?", valor: 10 },
+  { texto: "¿Cuántos pares de costillas tiene normalmente el cuerpo humano?", valor: 12 },
+  { texto: "¿Cuántos segundos exactos componen una hora de tiempo?", valor: 3600 },
+  { texto: "¿Cuántos elementos químicos componen la tabla periódica oficial actual?", valor: 118 },
+  { texto: "¿Cuántas casillas cuadradas en total componen un tablero reglamentario de ajedrez?", valor: 64 },
+  { texto: "¿Cuántas estrellas doradas aparecen en el círculo de la bandera de la Unión Europea?", valor: 12 },
+  { texto: "¿Cuántas copas del mundo de fútbol masculino ha ganado la selección de Brasil?", valor: 5 },
+  { texto: "¿Cuántas cartas componen una baraja francesa de póker estándar (sin contar comodines)?", valor: 52 },
+  { texto: "¿Cuántas patas tienen los crustáceos decápodos como las langostas y los cangrejos?", valor: 10 },
+  { texto: "¿Cuántos episodios en total tiene la aclamada serie de televisión 'Los Soprano'?", valor: 86 },
 ];
 type Phase = "LOBBY" | "BETTING" | "DECISION" | "RESULTS";
 type Decision = "STAY" | "LEAVE";
@@ -434,6 +507,7 @@ interface Room {
   question: (typeof QUESTIONS)[number] | null;
   currentBid: number;
   isTriplazo: boolean;
+  bidsHistory: Array<{ playerName: string; bid: number; isTriplazo?: boolean }>;
   captainId: string | null;
   turnPlayerId: string | null;
   roundStarterId: string | null;
@@ -494,6 +568,7 @@ function roomSnapshot(room: Room) {
       question: room.question?.text ?? "",
       currentBid: room.currentBid,
       isTriplazo: room.isTriplazo,
+      bidsHistory: (room as any).bidsHistory ?? [],
       captainId: room.captainId,
       captainName: captain?.name ?? "",
       turnPlayerId: room.turnPlayerId,
@@ -558,7 +633,9 @@ function decisionsAreComplete(room: Room): boolean {
 function resolveRound(room: Room) {
   if (!gameIo || !room.question || !room.captainId) return;
   room.phase = "RESULTS";
-  const success = room.currentBid <= room.question.answer;
+
+  const isExactMatch = room.currentBid === room.question.answer;
+  const success = room.isTriplazo ? isExactMatch : room.currentBid <= room.question.answer;
   room.latestOutcome = success ? "SUCCESS" : "CRASH";
 
   room.latestResults = room.players.map((player) => {
@@ -567,17 +644,23 @@ function resolveRound(room: Room) {
     let pointsEarned: number;
 
     if (success) {
-      pointsEarned = isCaptain
-        ? (room.isTriplazo ? 5 : 3)
-        : decision === "STAY"
-          ? (room.isTriplazo ? 3 : 2)
-          : 0;
+      if (room.isTriplazo) {
+        // Triplazo acertado clavado
+        pointsEarned = isCaptain ? 8 : (decision === "STAY" ? 4 : -1);
+      } else if (isExactMatch) {
+        // Apuesta normal clavada exacta
+        pointsEarned = isCaptain ? 6 : (decision === "STAY" ? 3 : -1);
+      } else {
+        // No se estrella
+        pointsEarned = isCaptain ? 4 : (decision === "STAY" ? 2 : -1);
+      }
     } else {
-      pointsEarned = isCaptain
-        ? (room.isTriplazo ? -4 : -2)
-        : decision === "STAY"
-          ? -2
-          : 2;
+      // El coche se estrella
+      if (room.isTriplazo) {
+        pointsEarned = isCaptain ? -5 : (decision === "STAY" ? -3 : 2);
+      } else {
+        pointsEarned = isCaptain ? -3 : (decision === "STAY" ? -2 : 2);
+      }
     }
 
     room.scores[player.id] = (room.scores[player.id] ?? 0) + pointsEarned;
@@ -630,9 +713,10 @@ function startRound(room: Room, starterId: string) {
   room.decisions = {};
   room.latestResults = null;
   room.latestOutcome = null;
+(room as any).bidsHistory = [];
   for (const player of room.players) {
     player.hasActed = false;
-    player.folded = !player.connected;
+    player.folded = false; // Nadie empieza plantado: todos pueden jugar
   }
   emitRoomState(room);
   return true;
@@ -708,6 +792,7 @@ export function attachGameSocket(server: HttpServer) {
           question: null,
           currentBid: 0,
           isTriplazo: false,
+          bidsHistory: [],
           captainId: null,
           turnPlayerId: null,
           roundStarterId: playerId,
@@ -853,6 +938,16 @@ export function attachGameSocket(server: HttpServer) {
         room.captainId = player.id;
         room.isTriplazo = isTriplazo;
 
+        // Guardamos la puja en el historial para mostrarla en pantalla
+        if (!(room as any).bidsHistory) {
+          (room as any).bidsHistory = [];
+        }
+        (room as any).bidsHistory.push({
+          playerName: player.name,
+          bid: bet,
+          isTriplazo: isTriplazo
+        });
+
         if (isTriplazo) {
           enterDecisionPhase(room);
         } else if (auctionShouldClose(room)) {
@@ -932,10 +1027,37 @@ export function attachGameSocket(server: HttpServer) {
         reply(ack, { success: false, message: "La ronda todavía no ha terminado." });
         return;
       }
-      if (player.id !== room.hostPlayerId) {
+    if (player.id !== room.hostPlayerId) {
         reply(ack, { success: false, message: "Solo el anfitrión puede abrir la siguiente ronda." });
         return;
       }
+
+      // Si ya hemos jugado 20 rondas, volvemos a la sala de espera y reseteamos todo a cero
+      const currentRoundNum = (room as any).roundNumber ?? (room as any).round ?? (room as any).game?.roundNumber ?? (room as any).game?.round ?? 1;
+      if (currentRoundNum >= 20) {
+        room.phase = "LOBBY";
+        (room as any).roundNumber = 0;
+        if ((room as any).round) (room as any).round = 0;
+        if ((room as any).game) {
+          (room as any).game.roundNumber = 0;
+          (room as any).game.round = 0;
+        }
+
+        // Reseteamos los puntos de todos los jugadores
+        for (const p of room.players) {
+          (p as any).score = 0;
+          (p as any).points = 0;
+          (p as any).totalScore = 0;
+        }
+        if ((room as any).scores) (room as any).scores = {};
+        if ((room as any).game?.scores) (room as any).game.scores = {};
+
+        // Emitimos la sala actualizada a todos los jugadores para que vuelvan al Lobby
+        emitRoomState(room);
+        reply(ack, { success: true, room: roomSnapshot(room) });
+        return;
+      }
+
       const previousStarterIndex = room.players.findIndex((entry) => entry.id === room.roundStarterId);
       const nextStarterIndex = nextConnectedIndex(room, previousStarterIndex < 0 ? -1 : previousStarterIndex);
       const nextStarterId = room.players[nextStarterIndex]?.id;

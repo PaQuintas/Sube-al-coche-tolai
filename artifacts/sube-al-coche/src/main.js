@@ -3,7 +3,7 @@ import backgroundUrl from "@assets/generated_images/aguadulce-night-road.jpg";
 import "./game.css";
 
 const app = document.querySelector("#app");
-const NAMES = ["Amador", "Hindemith", "El Susurrador", "Mitsu", "Alevín01", "Josué"];
+const NAMES = ["Amador", "Candimir", "El Susurrador", "Mitsu", "Alevín01", "Josué"];
 const SESSION_KEY = "sube-al-coche-session";
 
 document.documentElement.style.setProperty("--night-road-image", `url("${backgroundUrl}")`);
@@ -55,14 +55,13 @@ function scene(content) {
   return `
     <main class="scene">
       <header class="masthead">
-        <div class="wordmark">
-          <span class="wordmark-mark">ST</span>
-          <span>Carretera sin destino</span>
-        </div>
-        <span class="masthead-note">UNA SALA · TUS COLEGAS · LA NOCHE</span>
+        <span class="masthead-note">UNA SALA · LOS CHAVALES · LA NOCHE</span>
       </header>
       ${content}
-      <footer class="scene-caption">UNA SALA PARA TODA LA CUADRILLA <span>·</span> ALMERÍA</footer>
+      <footer class="scene-caption">
+  <div>TODAY IS THE LAST NIGHT</div>
+  <div style="margin-top: 4px; opacity: 0.8;">ARE YOU READY FOR TONIGHT?</div>
+</footer>
     </main>`;
 }
 
@@ -82,7 +81,7 @@ function renderMenu() {
     <section class="stage">
       <p class="eyebrow">36.8123° N, 2.5694° W</p>
       <h1 class="hero-title">¡Sube al<br><em>coche, tolai!</em></h1>
-      <p class="hero-copy">Una noche tranquila se transforma rápidamente en una noche de ALL IN. Reúne a la cuadrilla y descubre quién se atreve a seguir dentro.</p>
+      <p class="hero-copy">Una noche tranquila se transforma rápidamente en una noche de ALL IN. ¿Serás el más vasilón?.</p>
       <div class="menu-actions">
         <button class="button button-primary" data-action="play">Arrancamos motores 🚗</button>
         <button class="button button-secondary" data-action="rules">¿Cómo se viaja? 📖</button>
@@ -191,10 +190,31 @@ function renderLobby() {
         ${isHost ? `<button class="button button-primary start-trip-button" data-action="start-game" ${canStart ? "" : "disabled"}>¡Empezar Viaje! ⚡</button>
           <p class="wait-note">${connectedCount < 2 ? "Hace falta al menos otro pasajero conectado para arrancar." : "La partida empezará con todos los que están en la sala."}</p>` : '<p class="wait-note">Esperando a que el anfitrión empiece el viaje.</p>'}
         ${notice ? `<p class="room-notice" role="alert">${escapeHtml(notice)}</p>` : ""}
-        ${connectionNote()}
-        <button class="button button-text lobby-back" data-action="leave-room">Salir de la sala</button>
-      </div>
-    </section>`);
+  ${connectionNote()}
+      ${(() => {
+        const tips = [
+          "Debate con los demás, que esto no es el bingo.",
+          "Si ves que alguien se pasa pujando o solo dice tonterías, no dudes en decirle que es un Tolas.",
+          "Tirar un Triplazo te da +8 puntos si clavas la cifra exacta, pero si te estrellas te comerás un -5. Piensa bien si te compensa la vacilada.",
+          "Si no te fías del capitán porque es un tolai y crees que se va a equivoca, bájate del coche: salvarte de una buena hostia te da +2 puntos gratis.",
+          "Meter un farol con una cifra loca puede forzar a los demás a plantarse... salvo que te quedes solo y te toque comerte un mojón.",
+          "El capitán se lleva +4 puntos si acierta, pero si se estrella pierde -3. La avaricia rompe el saco, tolai.",
+          "Callate un poco y juega, que eres un tolas",
+          "Recuerda que puede que tengas la razón, pero que a lo mejor importa una mierda."
+        ];
+        if (room && !room._lobbyTip) {
+          room._lobbyTip = tips[Math.floor(Math.random() * tips.length)];
+        }
+        const chosenTip = (room && room._lobbyTip) || tips[0];
+        return `
+          <div style="margin: 22px auto 14px; padding: 10px 16px; border-radius: 8px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); font-size: 0.82rem; color: #a1a1aa; line-height: 1.45; text-align: center; max-width: 440px;">
+            💡 <strong style="color: #e4e4e7;">Protip:</strong> ${chosenTip}
+          </div>
+        `;
+      })()}
+      <button class="button button-text lobby-back" data-action="leave-room">Salir de la sala</button>
+    </div>
+  </section>`);
 }
 
 function renderGame() {
@@ -210,10 +230,20 @@ function renderGame() {
       <div class="game-question panel">
         <span class="field-label">PREGUNTA DE LA PARADA</span>
         <h1>${escapeHtml(game.question)}</h1>
-        <div class="bet-readout">
-          <span>APUESTA ACTUAL</span><strong>${game.currentBid.toLocaleString("es-ES")}</strong>
-          <small>${game.captainName ? `Capitán: ${escapeHtml(game.captainName)}` : "Aún no hay apuesta"}</small>
-        </div>
+       <div class="bet-readout">
+         <span>APUESTA ACTUAL</span><strong>${game.currentBid.toLocaleString("es-ES")}</strong>
+         <small>${game.captainName ? `Capitán: ${escapeHtml(game.captainName)}` : "Aún no hay apuesta"}</small>
+         ${(game.bidsHistory && game.bidsHistory.length > 0) ? `
+           <div style="margin-top: 12px; font-size: 0.82rem; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; opacity: 0.9;">
+             <span style="font-size: 0.72rem; text-transform: uppercase; color: #a1a1aa; font-weight: 600; letter-spacing: 0.5px;">Historial:</span>
+             ${game.bidsHistory.map((b) => `
+               <span style="background: rgba(255,255,255,0.07); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.12); display: inline-flex; align-items: center; gap: 4px;">
+                 ${escapeHtml(b.playerName)}: <strong>${Number(b.bid).toLocaleString("es-ES")}</strong>${b.isTriplazo ? ' 🚀' : ''}
+               </span>
+             `).join('<span style="opacity: 0.4;">➔</span>')}
+           </div>
+         ` : ''}
+       </div>
       </div>
       <div class="panel game-panel">
         <div class="game-turn ${isMyTurn ? "your-turn" : ""}" role="status">
@@ -302,10 +332,18 @@ function renderResults() {
         if (currentRound < 20) return "";
 
         // Función para leer los puntos reales de cada jugador
-        const getScore = (p) => p.score ?? p.totalScore ?? p.points ?? room.scores?.[p.id] ?? 0;
-        const sorted = [...(room.players || [])].sort((a, b) => getScore(b) - getScore(a));
-        const winner = sorted[0];
-        const winnerScore = winner ? getScore(winner) : 0;
+    const getScore = (p) => {
+       if (!p) return 0;
+       const pid = p.id || p.socketId;
+       const val = p.score ?? p.totalScore ?? p.points ?? p.pts ??
+                   room.scores?.[pid] ?? room.game?.scores?.[pid] ??
+                   room.leaderboard?.[pid] ?? room.game?.leaderboard?.[pid] ?? 0;
+       return Number(val) || 0;
+     };
+     const playersList = Array.isArray(room.players) ? room.players : Object.values(room.players || {});
+     const sorted = [...playersList].sort((a, b) => getScore(b) - getScore(a));
+     const winner = sorted[0];
+     const winnerScore = winner ? getScore(winner) : 0;
 
         return `
           <div style="background: linear-gradient(135deg, #f59e0b, #d97706); color: #fff; padding: 22px; border-radius: 16px; text-align: center; margin: 18px 0; box-shadow: 0 8px 24px rgba(245, 158, 11, 0.4);">
