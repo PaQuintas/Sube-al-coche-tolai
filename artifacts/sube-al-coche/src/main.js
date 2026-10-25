@@ -140,7 +140,7 @@ function renderRules() {
           <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 8px; padding: 14px; font-size: 0.85rem; line-height: 1.5;">
             <div style="font-weight: 700; color: #4ade80; margin-bottom: 8px; font-size: 0.92rem;">🟢 El coche NO se estrella</div>
             <div style="color: #a1a1aa; font-size: 0.76rem; margin-bottom: 8px;">(Apuesta ≤ Respuesta real)</div>
-            <div>👑 <strong>Capitán:</strong> +4 pts <span style="color: #4ade80; font-size: 0.78rem;">(+6 si clava el número)</span></div>
+            <div>👑 <strong>Capitán:</strong> +5 pts <span style="color: #4ade80; font-size: 0.78rem;">(+6 si clava el número)</span></div>
             <div>👥 <strong>Tripulantes:</strong> +2 pts <span style="color: #4ade80; font-size: 0.78rem;">(+3 en pleno)</span></div>
             <div>🚶‍♂️ <strong>Máquinas que bajaron:</strong> -1 pto</div>
           </div>
@@ -265,16 +265,23 @@ function renderGame() {
        <div class="bet-readout">
          <span>APUESTA ACTUAL</span><strong>${game.currentBid.toLocaleString("es-ES")}</strong>
          <small>${game.captainName ? `Capitán: ${escapeHtml(game.captainName)}` : "Aún no hay apuesta"}</small>
-         ${(game.bidsHistory && game.bidsHistory.length > 0) ? `
-           <div style="margin-top: 12px; font-size: 0.82rem; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; opacity: 0.9;">
-             <span style="font-size: 0.72rem; text-transform: uppercase; color: #a1a1aa; font-weight: 600; letter-spacing: 0.5px;">Historial:</span>
-             ${game.bidsHistory.map((b) => `
-               <span style="background: rgba(255,255,255,0.07); padding: 3px 8px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.12); display: inline-flex; align-items: center; gap: 4px;">
-                 ${escapeHtml(b.playerName)}: <strong>${Number(b.bid).toLocaleString("es-ES")}</strong>${b.isTriplazo ? ' 🚀' : ''}
-               </span>
-             `).join('<span style="opacity: 0.4;">➔</span>')}
-           </div>
-         ` : ''}
+         ${(() => {
+  if (!game.bidsHistory || game.bidsHistory.length === 0) return '';
+  const latestByPlayer = Object.values(
+    game.bidsHistory.reduce((acc, b) => { acc[b.playerName] = b; return acc; }, {})
+  );
+  if (latestByPlayer.length === 0) return '';
+  return `
+    <div style="margin-top: 8px; font-size: 0.72rem; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; opacity: 0.85;">
+      <span style="font-size: 0.65rem; text-transform: uppercase; color: #a1a1aa; font-weight: 600; letter-spacing: 0.5px;">Últimas apuestas:</span>
+      ${latestByPlayer.map((b) => `
+        <span style="background: rgba(255,255,255,0.06); padding: 2px 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.1); display: inline-flex; align-items: center; gap: 3px;">
+          ${escapeHtml(b.playerName)}: <strong>${Number(b.bid).toLocaleString("es-ES")}</strong>${b.isTriplazo ? ' 🚀' : ''}
+        </span>
+      `).join('')}
+    </div>
+  `;
+})()}
        </div>
       </div>
       <div class="panel game-panel">
@@ -350,6 +357,12 @@ function renderResults() {
           <span>APUESTA <strong>${game.currentBid.toLocaleString("es-ES")}</strong></span>
           <span>VALOR REAL <strong>${game.actualValue?.toLocaleString("es-ES") ?? "—"}</strong></span>
         </div>
+        ${game.questionNote ? `
+          <div style="margin: 10px auto 14px; max-width: 440px; background: rgba(59, 130, 246, 0.14); border: 1px solid rgba(59, 130, 246, 0.35); border-radius: 8px; padding: 8px 14px; font-size: 0.84rem; color: #bfdbfe; display: flex; align-items: center; justify-content: center; gap: 8px; line-height: 1.4; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.2);">
+            <span style="font-size: 1.1rem; flex-shrink: 0;">💡</span>
+            <span>${escapeHtml(game.questionNote)}</span>
+          </div>
+        ` : ''}
         <div class="table-wrap">
           <table class="results-table">
             <thead><tr><th>Pasajero</th><th>Decisión</th><th>Esta ronda</th><th>Total</th></tr></thead>
