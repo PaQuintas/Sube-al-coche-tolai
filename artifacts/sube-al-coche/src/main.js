@@ -120,18 +120,50 @@ function renderRules() {
   render(`
     <section class="stage stage-wide">
       <p class="eyebrow">GUÍA DE CARRETERA</p>
-      <h1 class="screen-title">¿Cómo se viaja?</h1>
+<h1 class="screen-title">¿Cómo se viaja?</h1>
       <div class="panel rules-panel">
+        <h2 style="font-size: 1rem; text-transform: uppercase; letter-spacing: 1px; color: #f59e0b; margin-bottom: 12px;">Mecánica del viaje</h2>
         <ol class="rules-list">
-          <li><span class="rule-number">01</span><span>El anfitrión crea una sala y comparte el código TOLAS con hasta 7 amigos más.</span></li>
-          <li><span class="rule-number">02</span><span>En tu turno, sube la apuesta con un número mayor al actual o plántate para quedar fuera de las pujas de esta ronda.</span></li>
-          <li><span class="rule-number">03</span><span>TRIPLAZO solo está disponible en tu primer turno de la ronda y cierra la puja inmediatamente.</span></li>
-          <li><span class="rule-number">04</span><span>Sin TRIPLAZO, la puja se cierra cuando todos se han plantado excepto el último que pujó: esa persona es el Capitán.</span></li>
-          <li><span class="rule-number">05</span><span>Al cerrarse la puja, el Capitán se queda dentro automáticamente y los demás pasajeros deciden si siguen dentro o se bajan.</span></li>
-          <li><span class="rule-number">06</span><span>Si la apuesta no supera la respuesta, el coche llega: capitán +3 (o +5 con TRIPLAZO), pasajeros dentro +2 (o +3 con TRIPLAZO), quienes bajaron 0.</span></li>
-          <li><span class="rule-number">07</span><span>Si la apuesta supera la respuesta, hay siniestro: capitán −2 (o −4 con TRIPLAZO), pasajeros dentro −2 y quienes bajaron +2.</span></li>
+          <li><span class="rule-number">01</span><span>El anfitrión crea la sala y comparte el código con hasta 7 colegas.</span></li>
+          <li><span class="rule-number">02</span><span>En tu turno, sube la apuesta numérica o plántate para salir de las pujas de la ronda.</span></li>
+          <li><span class="rule-number">03</span><span>La puja termina cuando todos se plantan: el último en pujar se convierte en el <strong>Capitán</strong>.</span></li>
+          <li><span class="rule-number">04</span><span><strong>TRIPLAZO:</strong> solo disponible en tu primer turno. Cierra la puja al instante y dices la cifra exacta.</span></li>
+          <li><span class="rule-number">05</span><span>El Capitán conduce sí o sí. Los demás deciden: <strong>¿se quedan en el coche o van en seat-pata?</strong></span></li>
         </ol>
+
+        <h2 style="font-size: 1.05rem; text-transform: uppercase; letter-spacing: 1.2px; color: #f59e0b; margin-top: 24px; margin-bottom: 14px; text-align: center; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 20px;">
+          ⚖️ Tabla de Puntuaciones
+        </h2>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 12px; margin-bottom: 24px;">
+          <!-- Tarjeta 1: Coche llega sano -->
+          <div style="background: rgba(34, 197, 94, 0.08); border: 1px solid rgba(34, 197, 94, 0.25); border-radius: 8px; padding: 14px; font-size: 0.85rem; line-height: 1.5;">
+            <div style="font-weight: 700; color: #4ade80; margin-bottom: 8px; font-size: 0.92rem;">🟢 El coche NO se estrella</div>
+            <div style="color: #a1a1aa; font-size: 0.76rem; margin-bottom: 8px;">(Apuesta ≤ Respuesta real)</div>
+            <div>👑 <strong>Capitán:</strong> +4 pts <span style="color: #4ade80; font-size: 0.78rem;">(+6 si clava el número)</span></div>
+            <div>👥 <strong>Tripulantes:</strong> +2 pts <span style="color: #4ade80; font-size: 0.78rem;">(+3 en pleno)</span></div>
+            <div>🚶‍♂️ <strong>Máquinas que bajaron:</strong> -1 pto</div>
+          </div>
+
+          <!-- Tarjeta 2: Hostión -->
+          <div style="background: rgba(239, 68, 68, 0.08); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 8px; padding: 14px; font-size: 0.85rem; line-height: 1.5;">
+            <div style="font-weight: 700; color: #f87171; margin-bottom: 8px; font-size: 0.92rem;">💥 El coche SE ESTRELLA</div>
+            <div style="color: #a1a1aa; font-size: 0.76rem; margin-bottom: 8px;">(Apuesta &gt; Respuesta real)</div>
+            <div>👑 <strong>Capitán:</strong> -3 pts</div>
+            <div>👥 <strong>Tripulantes:</strong> -2 pts</div>
+            <div>🏃‍♂️ <strong>Los que bajaron:</strong> +2 pts</div>
+          </div>
+
+          <!-- Tarjeta 3: TRIPLAZO -->
+          <div style="background: rgba(234, 179, 8, 0.08); border: 1px solid rgba(234, 179, 8, 0.25); border-radius: 8px; padding: 14px; font-size: 0.85rem; line-height: 1.5; grid-column: 1 / -1;">
+            <div style="font-weight: 700; color: #facc15; margin-bottom: 8px; font-size: 0.92rem;">🚀 Modo TRIPLAZO (Todo o Nada)</div>
+            <div style="margin-bottom: 4px;">🎯 <strong>Si acierta exacto:</strong> Capitán +8 pts · Pasajeros +4 pts · Máquinas -1 pto</div>
+            <div>💀 <strong>Si falla:</strong> Capitán -5 pts · Pasajeros -3 pts · Personas que bajaron +2 pts</div>
+          </div>
+        </div>
+
         <button class="button button-primary rules-back" data-action="menu">Volver al menú</button>
+      </div>
       </div>
     </section>`);
 }
