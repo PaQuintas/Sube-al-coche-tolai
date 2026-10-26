@@ -267,10 +267,12 @@ function renderGame() {
          <small>${game.captainName ? `Capitán: ${escapeHtml(game.captainName)}` : "Aún no hay apuesta"}</small>
          ${(() => {
   if (!game.bidsHistory || game.bidsHistory.length === 0) return '';
-  const latestByPlayer = Object.values(
-    game.bidsHistory.reduce((acc, b) => { acc[b.playerName] = b; return acc; }, {})
-  );
-  if (latestByPlayer.length === 0) return '';
+           const latestByPlayer = Object.values(
+             game.bidsHistory.reduce((acc, b) => { acc[b.playerName] = b; return acc; }, {})
+           );
+           // Ordenar apuestas de mayor a menor
+           latestByPlayer.sort((a, b) => (Number(b.bid) || 0) - (Number(a.bid) || 0));
+           if (latestByPlayer.length === 0) return '';
   return `
     <div style="margin-top: 8px; font-size: 0.72rem; display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; align-items: center; opacity: 0.85;">
       <span style="font-size: 0.65rem; text-transform: uppercase; color: #a1a1aa; font-weight: 600; letter-spacing: 0.5px;">Últimas apuestas:</span>

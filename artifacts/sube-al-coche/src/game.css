@@ -207,3 +207,19 @@ button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+/* --- BLOQUEO ANTI-COPIA EN PREGUNTAS (Móvil y PC Anti-IA) --- */
+.question,
+.question-text,
+.question-box,
+#questionText,
+#question,
+[data-question],
+.card-question {
+  -webkit-user-select: none !important;
+  -moz-user-select: none !important;
+  -ms-user-select: none !important;
+  user-select: none !important;
+  -webkit-touch-callout: none !important;
+  pointer-events: auto;
+  touch-action: pan-y; /* Permite hacer scroll con el dedo, pero no seleccionar */
+}
