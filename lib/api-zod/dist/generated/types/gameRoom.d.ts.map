@@ -1,0 +1,1 @@
+{"version":3,"file":"gameRoom.d.ts","sourceRoot":"","sources":["../../../src/generated/types/gameRoom.ts"],"names":[],"mappings":"AAAA;;;;;;GAMG;AACH,OAAO,KAAK,EAAE,UAAU,EAAE,MAAM,cAAc,CAAC;AAC/C,OAAO,KAAK,EAAE,cAAc,EAAE,MAAM,kBAAkB,CAAC;AAEvD,MAAM,WAAW,QAAQ;IACvB,IAAI,EAAE,MAAM,CAAC;IACb,OAAO,EAAE,UAAU,EAAE,CAAC;IACtB,UAAU,EAAE,MAAM,CAAC;IACnB,MAAM,EAAE,cAAc,CAAC;CACxB"}
