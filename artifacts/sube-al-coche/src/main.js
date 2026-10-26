@@ -643,3 +643,29 @@ if (session) {
 } else {
   renderMenu();
 }
+
+// --- BLINDAJE ANTI-TRAMPAS IA (BLOQUEO DE COPIADO) ---
+// 1. Bloquear clic derecho (excepto en casillas donde escriben su nombre o código)
+document.addEventListener('contextmenu', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  e.preventDefault();
+}, false);
+
+// 2. Bloquear atajos Ctrl+C, Ctrl+A, Ctrl+U y Cmd+C en Mac
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if ((e.ctrlKey || e.metaKey) && ['c', 'C', 'x', 'X', 'u', 'U', 'a', 'A'].includes(e.key)) {
+    e.preventDefault();
+  }
+});
+
+// 3. Bloquear la orden de copiar del navegador
+document.addEventListener('copy', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  e.preventDefault();
+});
+
+// 4. Evitar que arrastren el texto con el ratón hacia otra pestaña
+document.addEventListener('dragstart', (e) => {
+  e.preventDefault();
+});
