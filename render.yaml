@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: el-presidente-aguadulce
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /healthz

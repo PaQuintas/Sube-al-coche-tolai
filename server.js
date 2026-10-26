@@ -1,364 +1,533 @@
-Aquí tienes el backend completo en Node.js con Socket.io.
+"use strict";
 
-Está diseñado para encajar al 100% con tu cliente: genera códigos de sala de 9
-caracteres con el prefijo TOLAS, gestiona las rondas de turnos circulares, el
-pase a fase de votación (por TRIPLAZO o resolución), y computa minuciosamente
-las puntuaciones de cada pasajero.
-
-server.js
-
+const crypto = require("node:crypto");
+const fs = require("node:fs");
+const http = require("node:http");
+const path = require("node:path");
 const express = require("express");
-const http = require("http");
-const { Server } = require("socket.io");
-const cors = require("cors");
+const WebSocket = require("ws");
 
+const PORT = Number(process.env.PORT) || 3000;
+const ROOM_TTL_MS = 30 * 60 * 1000;
+const MAX_MESSAGE_BYTES = 32 * 1024;
+const MAX_MESSAGES_PER_SECOND = 20;
+const ROOT = __dirname;
+const INDEX_FILE = path.join(ROOT, "index.html");
+const RULES_FILE = path.join(ROOT, "Reglas del Juego - El Presidente (Edición Personalizada).pdf");
 const app = express();
-app.use(cors());
-
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: "*",
-    methods: ["GET", "POST"]
-  }
+const wss = new WebSocket.Server({ noServer: true, maxPayload: MAX_MESSAGE_BYTES });
+const rooms = new Map();
+
+app.disable("x-powered-by");
+app.get("/", (_request, response) => response.sendFile(INDEX_FILE));
+app.get("/Reglas del Juego - El Presidente (Edición Personalizada).pdf", (_request, response) => {
+    if (!fs.existsSync(RULES_FILE)) {
+        response.sendStatus(404);
+        return;
+    }
+    response.sendFile(RULES_FILE);
 });
+app.get("/healthz", (_request, response) => response.status(200).json({ status: "ok" }));
+app.use((_request, response) => response.sendStatus(404));
 
-const PORT = process.env.PORT || 3000;
-
-// Banco de preguntas con respuestas numéricas
-const PREGUNTAS = [
-  { texto: "¿Cuántos kilómetros hay en carretera de Aguadulce a Madrid?", valor: 545 },
-  { texto: "¿Cuántos caballos de vapor (CV) tiene un Toyota Land Cruiser clásico?", valor: 177 },
-  { texto: "¿En qué año se lanzó el primer Toyota Land Cruiser?", valor: 1951 },
-  { texto: "¿Cuántos peldaños tiene la subida al cerro de San Cristóbal en Almería?", valor: 140 },
-  { texto: "¿Cuántos episodios tiene en total la serie 'Aquí no hay quien viva'?", valor: 91 },
-  { texto: "¿A qué velocidad máxima teórica (km/h) puede llegar un Land Cruiser cuesta abajo?", valor: 175 },
-  { texto: "¿Cuántos municipios tiene la provincia de Almería?", valor: 103 },
-  { texto: "¿Cuántos metros de longitud tiene la muralla de la Alcazaba de Almería?", valor: 1430 },
-  { texto: "¿Cuántos huesos tiene el cuerpo humano adulto?", valor: 206 },
-  { texto: "¿Cuántos días dura una vuelta completa al mundo en el clásico de Julio Verne?", valor: 80 },
-  { texto: "¿Cuántos litros de gasolina caben de media en el depósito de un Land Cruiser?", valor: 87 }
-];
-
-// Almacén de salas en memoria
-const rooms = {};
-
-// Genera un código de 9 caracteres: TOLAS + 4 caracteres alfanuméricos en mayúsculas
-function generarCodigoSala() {
-  const chars = "0123456789ABCDEFGHJKLMNPQRSTUVWXYZ";
-  let suffix = "";
-  for (let i = 0; i < 4; i++) {
-    suffix += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  const code = `TOLAS${suffix}`;
-  return rooms[code] ? generarCodigoSala() : code;
+function send(socket, message) {
+    if (socket && socket.readyState === WebSocket.OPEN) socket.send(JSON.stringify(message));
 }
 
-function obtenerPreguntaAleatoria() {
-  const indice = Math.floor(Math.random() * PREGUNTAS.length);
-  return PREGUNTAS[indice];
+function sendError(socket, message) {
+    send(socket, { type: "error", message });
 }
 
-io.on("connection", (socket) => {
-  console.log(`[+] Conexión establecida: ${socket.id}`);
+function makeToken() {
+    return crypto.randomBytes(32).toString("hex");
+}
 
-  // 1. CREAR SALA
-  socket.on("createRoom", ({ playerName }) => {
-    const code = generarCodigoSala();
-    const playerId = socket.id;
+function makeRoomCode() {
+    let code;
+    do {
+        code = "TOLAS" + String(crypto.randomInt(1000, 10000));
+    } while (rooms.has(code));
+    return code;
+}
 
-    rooms[code] = {
-      code,
-      players: [{ id: playerId, name: playerName || "Tolai Anónimo", socketId: socket.id }],
-      phase: "LOBBY", // LOBBY, BETTING, DECISION, RESULTS
-      startTimer: null,
-      preguntaObj: null,
-      decisiones: {}, // { playerId: "STAY" | "LEAVE" }
-      estadoJuego: {
-        preguntaActual: "",
-        numeroActual: 0,
-        esTriplazo: false,
-        capitanActual: "",
-        jugadores: [playerName],
-        turnoIndex: 0,
-        puntuaciones: { [playerName]: 0 }
-      }
+function publicRoster(room) {
+    return room.players
+        .map((player, seat) => ({ player, seat }))
+        .filter((entry) => Boolean(entry.player))
+        .map(({ player, seat }) => ({
+            seat,
+            name: player.name,
+            connected: Boolean(player.isCpu || player.socket && player.socket.readyState === WebSocket.OPEN),
+            cpu: Boolean(player.isCpu)
+        }));
+}
+
+function sendLobby(room) {
+    const message = {
+        type: "lobby",
+        room: room.code,
+        maxPlayers: room.maxPlayers,
+        players: publicRoster(room)
     };
+    room.players.filter(Boolean).forEach((player) => send(player.socket, message));
+}
 
-    socket.join(code);
-
-    // Notificar al creador de la sala
-    socket.emit("roomUpdated", {
-      code: code,
-      players: rooms[code].players
-    });
-
-    console.log(`[SALA CREADA] ${code} por ${playerName}`);
-  });
-
-  // 2. UNIRSE A SALA
-  socket.on("joinRoom", ({ roomCode, playerName }, callback) => {
-    const room = rooms[roomCode];
-
-    if (!room) {
-      return callback({ success: false, message: "¡Ese coche no existe, tolai!" });
-    }
-
-    if (room.players.length >= 8) {
-      return callback({ success: false, message: "¡El Land Cruiser está hasta arriba (máx. 8)!" });
-    }
-
-    if (room.phase !== "LOBBY") {
-      return callback({ success: false, message: "¡El Land Cruiser ya ha arrancado!" });
-    }
-
-    const playerId = socket.id;
-    const finalName = playerName || `Pasajero_${room.players.length + 1}`;
-
-    room.players.push({ id: playerId, name: finalName, socketId: socket.id });
-    room.estadoJuego.jugadores.push(finalName);
-    room.estadoJuego.puntuaciones[finalName] = 0;
-
-    socket.join(roomCode);
-
-    callback({ success: true, playerId });
-
-    // Actualizar sala de espera para todos
-    io.to(roomCode).emit("roomUpdated", {
-      code: room.code,
-      players: room.players
-    });
-
-    // Si hay 2 o más pasajeros y no hay cuenta atrás activa, iniciar cuenta para arrancar
-    if (room.players.length >= 2 && !room.startTimer) {
-      iniciarCuentaAtrasArranque(roomCode);
-    }
-  });
-
-  // 3. APUESTAS Y TURNOS CIRCULARES
-  socket.on("playerBet", ({ roomCode, bet, isTriplazo }) => {
-    const room = rooms[roomCode];
-    if (!room || room.phase !== "BETTING") return;
-
-    const jugadorTurnoNombre = room.estadoJuego.jugadores[room.estadoJuego.turnoIndex];
-    const jugadorActual = room.players.find((p) => p.socketId === socket.id);
-
-    // Validar que sea el turno del jugador que emite
-    if (!jugadorActual || jugadorActual.name !== jugadorTurnoNombre) {
-      return;
-    }
-
-    const apuesta = parseInt(bet, 10);
-    if (isNaN(apuesta) || apuesta <= room.estadoJuego.numeroActual) {
-      return;
-    }
-
-    // Actualizar el estado con la nueva puja
-    room.estadoJuego.numeroActual = apuesta;
-    room.estadoJuego.capitanActual = jugadorActual.name;
-    room.estadoJuego.esTriplazo = Boolean(isTriplazo);
-
-    if (isTriplazo) {
-      // Un TRIPLAZO bloquea la puja directamente y pasa a la fase de decisión
-      pasarAFaseDecision(roomCode);
-    } else {
-      // Turno circular al siguiente pasajero
-      room.estadoJuego.turnoIndex = (room.estadoJuego.turnoIndex + 1) % room.estadoJuego.jugadores.length;
-
-      io.to(roomCode).emit("turnUpdated", {
-        estadoJuego: room.estadoJuego
-      });
-    }
-  });
-
-  // 4. ENVÍO DE DECISIÓN (QUEDARSE DENTRO O BAJARSE)
-  socket.on("submitDecision", ({ roomCode, decision }) => {
-    const room = rooms[roomCode];
-    if (!room || room.phase !== "DECISION") return;
-
-    const jugador = room.players.find((p) => p.socketId === socket.id);
-    if (!jugador) return;
-
-    // Guardar voto ('STAY' o 'LEAVE')
-    room.decisiones[jugador.id] = decision;
-
-    // Si todos los jugadores conectados han tomado su decisión, resolvemos la ronda
-    const totalJugadores = room.players.length;
-    const totalDecisiones = Object.keys(room.decisiones).length;
-
-    if (totalDecisiones >= totalJugadores) {
-      resolverRonda(roomCode);
-    }
-  });
-
-  // Desconexión de jugadores
-  socket.on("disconnect", () => {
-    for (const code in rooms) {
-      const room = rooms[code];
-      const index = room.players.findIndex((p) => p.socketId === socket.id);
-
-      if (index !== -1) {
-        const removed = room.players.splice(index, 1)[0];
-        console.log(`[-] ${removed.name} se bajó del coche (${code})`);
-
-        if (room.players.length === 0) {
-          if (room.startTimer) clearTimeout(room.startTimer);
-          delete rooms[code];
-        } else if (room.phase === "LOBBY") {
-          room.estadoJuego.jugadores = room.players.map((p) => p.name);
-          io.to(code).emit("roomUpdated", { code: room.code, players: room.players });
+function viewForPlayer(snapshot, seat) {
+    const view = JSON.parse(JSON.stringify(snapshot));
+    view.jugadores.forEach((player, playerSeat) => {
+        if (playerSeat !== seat) {
+            player.mano = player.mano.map(() => ({ oculta: true }));
         }
-        break;
-      }
+    });
+    if (view.resumenIntercambioCulo && view.resumenIntercambioCulo.seat !== seat) {
+        view.resumenIntercambioCulo = null;
     }
-  });
+    if (view.resumenIntercambioViceCulo && view.resumenIntercambioViceCulo.seat !== seat) {
+        view.resumenIntercambioViceCulo = null;
+    }
+    if (view.intercambioCuloEnCurso && view.intercambioCuloEnCurso.seatCulo !== seat) {
+        view.intercambioCuloEnCurso = null;
+    }
+    if (view.intercambioViceCuloEnCurso && view.intercambioViceCuloEnCurso.seatViceCulo !== seat) {
+        view.intercambioViceCuloEnCurso = null;
+    }
+    return view;
+}
+
+function sendSnapshot(room, player) {
+    if (!room.snapshot || !player.socket) return;
+    const snapshot = player.isHost ? room.snapshot : viewForPlayer(room.snapshot, player.seat);
+    send(player.socket, { type: "state", state: snapshot, hostConnected: Boolean(room.players[0]?.socket) });
+}
+
+function broadcastSnapshot(room) {
+    room.players.filter(Boolean).forEach((player) => sendSnapshot(room, player));
+}
+
+function sendRoomStateTo(room, player) {
+    send(player.socket, {
+        type: "assigned",
+        room: room.code,
+        seat: player.seat,
+        token: player.token,
+        isHost: player.isHost,
+        maxPlayers: room.maxPlayers,
+        players: publicRoster(room),
+        phase: room.phase
+    });
+    if (room.phase === "running") {
+        if (room.snapshot) sendSnapshot(room, player);
+        else if (player.isHost) {
+            send(player.socket, {
+                type: "start",
+                room: room.code,
+                maxPlayers: room.maxPlayers,
+                players: publicRoster(room)
+            });
+        }
+    } else sendLobby(room);
+}
+
+function detachSocket(socket) {
+    if (!socket.roomCode) return;
+    const room = rooms.get(socket.roomCode);
+    if (!room) return;
+    const player = room.players[socket.seat];
+    if (!player || player.socket !== socket) return;
+    player.socket = null;
+
+    room.players.filter(Boolean).forEach((recipient) => {
+        send(recipient.socket, {
+            type: "player-status",
+            seat: socket.seat,
+            connected: false,
+            hostConnected: Boolean(room.players[0]?.socket)
+        });
+    });
+
+    if (room.players.every((entry) => !entry || !entry.socket)) {
+        clearTimeout(room.cleanupTimer);
+        room.cleanupTimer = setTimeout(() => {
+            if (room.players.every((entry) => !entry || !entry.socket)) rooms.delete(room.code);
+        }, ROOM_TTL_MS);
+        room.cleanupTimer.unref();
+    }
+}
+
+function validateName(value) {
+    if (typeof value !== "string") return null;
+    const name = value.trim().replace(/\s+/g, " ");
+    if (!name || name.length > 24 || /[\u0000-\u001f\u007f]/.test(name)) return null;
+    return name;
+}
+
+function attachPlayer(socket, room, player) {
+    clearTimeout(room.cleanupTimer);
+    room.cleanupTimer = null;
+    if (player.socket && player.socket !== socket) {
+        const oldSocket = player.socket;
+        player.socket = null;
+        oldSocket.close(4001, "Replaced by a reconnecting session");
+    }
+    player.socket = socket;
+    socket.roomCode = room.code;
+    socket.seat = player.seat;
+    socket.isHost = player.isHost;
+    sendRoomStateTo(room, player);
+    room.players.filter(Boolean).forEach((recipient) => {
+        send(recipient.socket, {
+            type: "player-status",
+            seat: player.seat,
+            connected: true,
+            hostConnected: Boolean(room.players[0]?.socket)
+        });
+    });
+    startRoomIfFull(room);
+}
+
+function createRoom(socket, message) {
+    const name = validateName(message.name);
+    const maxPlayers = Number(message.maxPlayers);
+    if (!name || ![3, 4, 5, 6].includes(maxPlayers)) {
+        sendError(socket, "Nombre o número de jugadores no válido.");
+        return;
+    }
+
+    const code = makeRoomCode();
+    const host = { seat: 0, name, token: makeToken(), isHost: true, socket };
+    const room = {
+        code,
+        maxPlayers,
+        phase: "lobby",
+        players: [host],
+        snapshot: null,
+        cleanupTimer: null
+    };
+    rooms.set(code, room);
+    attachPlayer(socket, room, host);
+}
+
+function joinRoom(socket, message) {
+    const code = typeof message.room === "string" ? message.room.trim().toUpperCase() : "";
+    const room = rooms.get(code);
+    const name = validateName(message.name);
+    if (!/^TOLAS\d{4}$/.test(code) || !room) {
+        sendError(socket, "No se encontró esa sala. Comprueba el código.");
+        return;
+    }
+    if (!name) {
+        sendError(socket, "Escribe un nombre válido (máximo 24 caracteres).");
+        return;
+    }
+
+    if (typeof message.token === "string") {
+        const returningPlayer = room.players.find((player) => player && player.token === message.token);
+        if (returningPlayer) {
+            attachPlayer(socket, room, returningPlayer);
+            return;
+        }
+    }
+
+    if (room.phase !== "lobby") {
+        sendError(socket, "La partida ya ha empezado. Usa el mismo navegador para reconectarte.");
+        return;
+    }
+    let seat = room.players.findIndex((player) => !player ||
+        !player.isCpu && (!player.socket || player.socket.readyState !== WebSocket.OPEN));
+    if (seat < 0 && room.players.length < room.maxPlayers) seat = room.players.length;
+    if (seat < 0 || seat >= room.maxPlayers) {
+        sendError(socket, "La sala está completa.");
+        return;
+    }
+    const player = { seat, name, token: makeToken(), isHost: false, socket };
+    room.players[seat] = player;
+    attachPlayer(socket, room, player);
+}
+
+function addCpuPlayer(socket, room, player) {
+    if (!player.isHost) {
+        sendError(socket, "Solo quien creó la sala puede añadir una CPU.");
+        return;
+    }
+    if (room.phase !== "lobby" || room.players.some((entry) => entry && entry.isCpu)) {
+        sendError(socket, "No se puede añadir a Cademir en este momento.");
+        return;
+    }
+    let seat = room.players.findIndex((entry) => !entry);
+    if (seat < 0 && room.players.length < room.maxPlayers) seat = room.players.length;
+    if (seat < 0 || seat >= room.maxPlayers) {
+        sendError(socket, "No hay sitio libre para añadir a Cademir.");
+        return;
+    }
+    room.players[seat] = {
+        seat,
+        name: "Cademir (CPU)",
+        token: null,
+        isHost: false,
+        isCpu: true,
+        socket: null
+    };
+    sendLobby(room);
+    startRoomIfFull(room);
+}
+
+function leaveRoom(socket, room, player) {
+    clearTimeout(room.cleanupTimer);
+    room.cleanupTimer = null;
+    if (player.isHost) {
+        rooms.delete(room.code);
+        room.players.filter(Boolean).forEach((recipient) => {
+            if (recipient === player) return;
+            send(recipient.socket, { type: "room-closed" });
+            if (recipient.socket) recipient.socket.close(4002, "The room host left");
+        });
+    } else {
+        room.players[player.seat] = null;
+        socket.roomCode = null;
+        socket.seat = null;
+        socket.isHost = false;
+        send(socket, { type: "left" });
+        sendLobby(room);
+        if (room.players.every((entry) => !entry || !entry.socket)) {
+            room.cleanupTimer = setTimeout(() => {
+                if (room.players.every((entry) => !entry || !entry.socket)) rooms.delete(room.code);
+            }, ROOM_TTL_MS);
+            room.cleanupTimer.unref();
+        }
+        return;
+    }
+    socket.roomCode = null;
+    socket.seat = null;
+    socket.isHost = false;
+    send(socket, { type: "left" });
+}
+
+function startRoomIfFull(room) {
+    if (room.phase !== "lobby" || !room.players[0]?.socket ||
+        !Array.from({ length: room.maxPlayers }, (_, seat) => room.players[seat]).every((player) =>
+            player && (player.isCpu || player.socket && player.socket.readyState === WebSocket.OPEN))) return;
+    room.phase = "running";
+    const message = {
+        type: "start",
+        room: room.code,
+        maxPlayers: room.maxPlayers,
+        players: publicRoster(room)
+    };
+    room.players.forEach((player) => send(player.socket, message));
+}
+
+function validateSnapshot(snapshot, room) {
+    if (!snapshot || typeof snapshot !== "object" || !Array.isArray(snapshot.jugadores) ||
+        snapshot.jugadores.length !== room.maxPlayers || !Number.isInteger(snapshot.turnoActivo) ||
+        snapshot.turnoActivo < 0 || snapshot.turnoActivo >= room.maxPlayers ||
+        !Array.isArray(snapshot.jugadoresPasados) || !Array.isArray(snapshot.ordenDescarteHistorico) ||
+        snapshot.jugadores.some((player) => !player || !Array.isArray(player.mano) ||
+            !player.conteoRoles || typeof player.conteoRoles !== "object" || Array.isArray(player.conteoRoles))) {
+        return false;
+    }
+    const exchange = snapshot.solicitudIntercambioFuria;
+    if (exchange && (typeof exchange !== "object" || Array.isArray(exchange) ||
+        typeof exchange.requestId !== "string" || exchange.requestId.length > 100 ||
+        !Number.isInteger(exchange.seatOrigen) || exchange.seatOrigen < 0 || exchange.seatOrigen >= room.maxPlayers ||
+        !Number.isInteger(exchange.seatDestino) || exchange.seatDestino < 0 || exchange.seatDestino >= room.maxPlayers ||
+        exchange.seatOrigen === exchange.seatDestino || ![1, 2].includes(exchange.cantidad) ||
+        typeof exchange.instruccion !== "string" || exchange.instruccion.length > 120)) {
+        return false;
+    }
+    const summaries = [
+        [snapshot.resumenIntercambioCulo, "Culo"],
+        [snapshot.resumenIntercambioViceCulo, "Vice-Culo"]
+    ];
+    for (const [summary, role] of summaries) {
+        if (summary && (typeof summary !== "object" || Array.isArray(summary) ||
+            typeof summary.id !== "string" || summary.id.length > 100 ||
+            summary.rol !== role ||
+            !Number.isInteger(summary.seat) || summary.seat < 0 || summary.seat >= room.maxPlayers ||
+            !Array.isArray(summary.enviadas) || summary.enviadas.length > 2 ||
+            !Array.isArray(summary.recibidas) || summary.recibidas.length > 2 ||
+            [...summary.enviadas, ...summary.recibidas].some((card) =>
+                !card || typeof card !== "object" || typeof card.uid !== "string" || card.uid.length > 80))) {
+            return false;
+        }
+    }
+    return JSON.stringify(snapshot).length <= MAX_MESSAGE_BYTES;
+}
+
+function handleMessage(socket, message) {
+    if (!message || typeof message !== "object" || Array.isArray(message)) {
+        sendError(socket, "Mensaje no válido.");
+        return;
+    }
+    if (typeof message.type !== "string") {
+        sendError(socket, "Tipo de mensaje no válido.");
+        return;
+    }
+    if (!new Set(["create", "join", "start", "state", "action", "exchange-response", "add-cpu", "leave"]).has(message.type)) {
+        sendError(socket, "Tipo de mensaje no soportado.");
+        return;
+    }
+    if (message.type === "create") {
+        if (socket.roomCode) return sendError(socket, "Ya estás en una sala.");
+        createRoom(socket, message);
+        return;
+    }
+    if (message.type === "join") {
+        if (socket.roomCode) return sendError(socket, "Ya estás en una sala.");
+        joinRoom(socket, message);
+        return;
+    }
+    if (message.type === "leave") {
+        const room = rooms.get(socket.roomCode);
+        const player = room && room.players[socket.seat];
+        if (!room || !player || player.socket !== socket) {
+            sendError(socket, "La conexión ya no pertenece a una sala activa.");
+            return;
+        }
+        leaveRoom(socket, room, player);
+        return;
+    }
+
+    const room = rooms.get(socket.roomCode);
+    const player = room && room.players[socket.seat];
+    if (!room || !player || player.socket !== socket) {
+        sendError(socket, "La conexión ya no pertenece a una sala activa.");
+        return;
+    }
+
+    if (message.type === "start") {
+        if (!player.isHost) return sendError(socket, "Solo quien creó la sala puede iniciar.");
+        startRoomIfFull(room);
+        return;
+    }
+
+    if (message.type === "add-cpu") {
+        addCpuPlayer(socket, room, player);
+        return;
+    }
+
+    if (message.type === "state") {
+        if (!player.isHost || room.phase !== "running" || !validateSnapshot(message.state, room)) {
+            sendError(socket, "No se pudo sincronizar el estado de la partida.");
+            return;
+        }
+        room.snapshot = message.state;
+        broadcastSnapshot(room);
+        return;
+    }
+
+    if (message.type === "action") {
+        if (room.phase !== "running" || player.isHost || !room.snapshot ||
+            room.snapshot.faseIntercambioFuria ||
+            room.snapshot.turnoActivo !== player.seat ||
+            room.snapshot.jugadoresPasados.includes(player.seat) ||
+            !["play", "pass"].includes(message.action) ||
+            (message.action === "play" && (!Array.isArray(message.cardUids) ||
+                message.cardUids.length < 1 || message.cardUids.length > 4 ||
+                message.cardUids.some((uid) => typeof uid !== "string" || uid.length > 80)))) {
+            sendError(socket, "No es tu turno o la jugada no es válida.");
+            return;
+        }
+        const host = room.players[0];
+        if (!host || !host.socket) {
+            sendError(socket, "El anfitrión se ha desconectado. Esperando su reconexión.");
+            return;
+        }
+        send(host.socket, { type: "action", seat: player.seat, action: message.action, cardUids: message.cardUids || [] });
+        return;
+    }
+
+    if (message.type === "exchange-response") {
+        const exchange = room.snapshot && room.snapshot.solicitudIntercambioFuria;
+        if (room.phase !== "running" || player.isHost || !exchange ||
+            exchange.seatOrigen !== player.seat || message.requestId !== exchange.requestId ||
+            !Array.isArray(message.cardUids) || message.cardUids.length !== exchange.cantidad ||
+            message.cardUids.some((uid) => typeof uid !== "string" || uid.length > 80) ||
+            new Set(message.cardUids).size !== exchange.cantidad ||
+            message.cardUids.some((uid) => !room.snapshot.jugadores[player.seat].mano.some((card) => card.uid === uid))) {
+            sendError(socket, "La selección del intercambio no es válida o ya ha caducado.");
+            return;
+        }
+        const host = room.players[0];
+        if (!host || !host.socket) {
+            sendError(socket, "El anfitrión se ha desconectado. Esperando su reconexión.");
+            return;
+        }
+        send(host.socket, {
+            type: "exchange-response",
+            seat: player.seat,
+            requestId: message.requestId,
+            cardUids: message.cardUids
+        });
+        return;
+    }
+
+    sendError(socket, "Tipo de mensaje no soportado.");
+}
+
+server.on("upgrade", (request, socket, head) => {
+    const origin = request.headers.origin;
+    if (origin) {
+        let originHost;
+        try {
+            originHost = new URL(origin).host;
+        } catch (_error) {
+            socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+            socket.destroy();
+            return;
+        }
+        if (originHost !== request.headers.host) {
+            socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
+            socket.destroy();
+            return;
+        }
+    }
+    if (request.url !== "/ws") {
+        socket.write("HTTP/1.1 404 Not Found\r\n\r\n");
+        socket.destroy();
+        return;
+    }
+    wss.handleUpgrade(request, socket, head, (webSocket) => wss.emit("connection", webSocket, request));
 });
 
-// Arranca la partida tras unos segundos para que se unan más si quieren
-function iniciarCuentaAtrasArranque(roomCode) {
-  const room = rooms[roomCode];
-  if (!room) return;
-
-  // 4 segundos de cortesía tras llegar al mínimo de 2 jugadores
-  room.startTimer = setTimeout(() => {
-    if (room && room.players.length >= 2) {
-      empezarPartida(roomCode);
-    }
-  }, 4000);
-}
-
-function empezarPartida(roomCode) {
-  const room = rooms[roomCode];
-  if (!room) return;
-
-  room.phase = "BETTING";
-  room.preguntaObj = obtenerPreguntaAleatoria();
-  room.decisiones = {};
-
-  room.estadoJuego.preguntaActual = room.preguntaObj.texto;
-  room.estadoJuego.numeroActual = 0;
-  room.estadoJuego.esTriplazo = false;
-  room.estadoJuego.capitanActual = "";
-  room.estadoJuego.turnoIndex = 0;
-
-  io.to(roomCode).emit("gameStarted", {
-    estadoJuego: room.estadoJuego
-  });
-}
-
-function pasarAFaseDecision(roomCode) {
-  const room = rooms[roomCode];
-  if (!room) return;
-
-  room.phase = "DECISION";
-  room.decisiones = {};
-
-  io.to(roomCode).emit("votingPhase", {
-    estadoJuego: room.estadoJuego
-  });
-}
-
-// 5. LÓGICA DE PUNTUACIONES EXACTA
-function resolverRonda(roomCode) {
-  const room = rooms[roomCode];
-  if (!room) return;
-
-  room.phase = "RESULTS";
-
-  const valorReal = room.preguntaObj.valor;
-  const numeroApostado = room.estadoJuego.numeroActual;
-  const capitanNombre = room.estadoJuego.capitanActual;
-  const esTriplazo = room.estadoJuego.esTriplazo;
-
-  // Condición de éxito: El coche no se estrella si la puja NO supera el valor real
-  const haTenidoExito = numeroApostado <= valorReal;
-
-  const resultados = [];
-
-  room.players.forEach((player) => {
-    const esCapitan = player.name === capitanNombre;
-    // Si alguien no votó a tiempo, por defecto se considera STAY si es el capitán, o LEAVE
-    const eleccion = room.decisiones[player.id] || (esCapitan ? "STAY" : "LEAVE");
-    let puntosGanados = 0;
-
-    if (haTenidoExito) {
-      // EL COCHE LLEGÓ A DESTINO (Éxito)
-      if (eleccion === "STAY") {
-        if (esCapitan) {
-          // El capitán se corona: +5 si fue TRIPLAZO, +3 si fue subida normal
-          puntosGanados = esTriplazo ? 5 : 3;
-        } else {
-          // Pasajero fiel que confió y se quedó dentro
-          puntosGanados = esTriplazo ? 3 : 2;
+wss.on("connection", (socket) => {
+    socket.messageTimes = [];
+    socket.isAlive = true;
+    socket.on("pong", () => { socket.isAlive = true; });
+    socket.on("message", (data) => {
+        const now = Date.now();
+        socket.messageTimes = socket.messageTimes.filter((time) => now - time < 1000);
+        socket.messageTimes.push(now);
+        if (socket.messageTimes.length > MAX_MESSAGES_PER_SECOND) {
+            socket.close(1008, "Too many messages");
+            return;
         }
-      } else {
-        // Se bajó por miedo y el coche llegó bien: 0 puntos de cobarde
-        puntosGanados = 0;
-      }
-    } else {
-      // EL COCHE SE ESTRELLÓ (Se pasó del número real)
-      if (eleccion === "STAY") {
-        if (esCapitan) {
-          // El capitán estrella el coche: penalización doble si fue triplazo
-          puntosGanados = esTriplazo ? -4 : -2;
-        } else {
-          // Los que se quedaron dentro se comen el siniestro
-          puntosGanados = -2;
+        let message;
+        try {
+            message = JSON.parse(data.toString());
+        } catch (_error) {
+            sendError(socket, "El mensaje no tiene un formato válido.");
+            return;
         }
-      } else {
-        // Los que se bajaron vieron venir el golpe y se salvaron: premio por listos
-        puntosGanados = 2;
-      }
-    }
-
-    // Actualizar acumulado total
-    room.estadoJuego.puntuaciones[player.name] = (room.estadoJuego.puntuaciones[player.name] || 0) + puntosGanados;
-
-    resultados.push({
-      name: player.name,
-      isCaptain: esCapitan,
-      decision: eleccion,
-      puntosGanados: puntosGanados,
-      scoreTotal: room.estadoJuego.puntuaciones[player.name]
+        handleMessage(socket, message);
     });
-  });
-
-  io.to(roomCode).emit("roundResolved", {
-    resultados: resultados,
-    valorReal: valorReal,
-    numeroActual: numeroApostado,
-    preguntaTexto: room.estadoJuego.preguntaActual
-  });
-}
-
-server.listen(PORT, () => {
-  console.log(`🚗 Servidor de ¡Sube al coche, tolai! escuchando en http://localhost:${PORT}`);
+    socket.on("close", () => detachSocket(socket));
+    socket.on("error", (error) => console.error("WebSocket error:", error.message));
 });
 
-Cómo ponerlo en marcha
+const heartbeat = setInterval(() => {
+    wss.clients.forEach((socket) => {
+        if (!socket.isAlive) {
+            socket.terminate();
+            return;
+        }
+        socket.isAlive = false;
+        socket.ping();
+    });
+}, 30_000);
 
-1.  En la carpeta de tu servidor, inicializa e instala las dependencias:
-    npm init -y
-    npm install express socket.io cors
-2.  Guarda el código anterior como server.js.
-3.  Inícialo:
-    node server.js
+server.listen(PORT, "0.0.0.0", () => {
+    console.log(`El Presidente listening on port ${PORT}`);
+});
 
-Características implementadas:
-
-  - Compatibilidad con prefijo TOLAS: Valida y crea salas con el formato
-    TOLASXXXX que espera el frontend.
-  - Turnos Circulares: estadoJuego.turnoIndex rota correlativamente entre los
-    nombres de los jugadores hasta que alguien pulsa TRIPLAZO.
-  - TRIPLAZO Directo: Congela la puja y lanza a toda la sala a la pantalla de
-    decisión (activarMenuDecision).
-  - Sistema de Puntuaciones:
-      - Llegada con éxito (puja <= real):
-          - Capitán: +5 pts (con Triplazo) o +3 pts (normal).
-          - Pasajeros que se quedaron (STAY): +3 pts (si hubo Triplazo) o +2
-            pts.
-          - Pasajeros que se bajaron (LEAVE): 0 pts.
-      - Siniestro (puja > real):
-          - Capitán: -4 pts (si fue Triplazo) o -2 pts.
-          - Pasajeros que se quedaron (STAY): -2 pts.
-          - Pasajeros que saltaron a tiempo (LEAVE): +2 pts.
+server.on("close", () => clearInterval(heartbeat));

@@ -1,0 +1,1807 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#071321">
+    <title>El Presidente | Aguadulce</title>
+    <style>
+        :root {
+            color-scheme: dark;
+            font-family: Georgia, "Times New Roman", serif;
+            --gold: #f4c66a;
+            --ivory: #fff8e9;
+            --ink: #071321;
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; }
+        body { color: var(--ivory); background: var(--ink); }
+        button, input { font: inherit; }
+        button { color: inherit; }
+        button:focus-visible, input:focus-visible { outline: 2px solid var(--gold); outline-offset: 3px; }
+        #menu-bienvenida, #pantalla-juego { position: fixed; inset: 0; width: 100%; height: 100%; }
+        #menu-bienvenida {
+            z-index: 30; display: grid; place-items: center; overflow: hidden;
+            background: radial-gradient(ellipse at 50% 89%, rgba(36,133,173,.25), transparent 36%), radial-gradient(ellipse at 14% 27%, rgba(29,73,109,.44), transparent 42%), linear-gradient(180deg, #07111e 0%, #0c2033 49%, #102a3a 70%, #071521 100%);
+            opacity: 1; visibility: visible; transition: opacity .65s ease, visibility .65s ease;
+        }
+        #menu-bienvenida::before {
+            content: ""; position: absolute; inset: 0; pointer-events: none; opacity: .72;
+            background-image: radial-gradient(1px 1px at 8% 15%, #fff 98%, transparent), radial-gradient(1px 1px at 21% 32%, #d9ecff 98%, transparent), radial-gradient(1.5px 1.5px at 32% 11%, #fff 98%, transparent), radial-gradient(1px 1px at 46% 23%, #d9ecff 98%, transparent), radial-gradient(1px 1px at 61% 13%, #fff 98%, transparent), radial-gradient(1.5px 1.5px at 76% 27%, #fff 98%, transparent), radial-gradient(1px 1px at 89% 12%, #d9ecff 98%, transparent), radial-gradient(1px 1px at 94% 42%, #fff 98%, transparent), radial-gradient(1px 1px at 15% 48%, #fff 98%, transparent), radial-gradient(1px 1px at 55% 39%, #d9ecff 98%, transparent);
+            background-size: 100% 100%;
+        }
+        #menu-bienvenida::after {
+            content: ""; position: absolute; right: -10%; bottom: -9%; left: -10%; height: 30%; pointer-events: none;
+            background: linear-gradient(180deg, transparent, rgba(55,159,197,.22) 18%, rgba(30,106,145,.13) 42%, transparent 80%); filter: blur(15px); transform: perspective(250px) rotateX(8deg);
+        }
+        .menu-shell { position: relative; z-index: 1; width: min(92vw, 480px); max-height: 92vh; overflow: auto; animation: arrival .8s cubic-bezier(.2,.75,.25,1) both; }
+        .glass-panel {
+            padding: clamp(24px, 6vw, 42px); background: rgba(15,23,42,0.55); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px);
+            border: 1px solid rgba(220,240,255,.19); border-radius: 12px; box-shadow: 0 28px 80px rgba(0,0,0,.48), inset 0 1px 0 rgba(255,255,255,.08);
+        }
+        .menu-panel { animation: panel-in .32s ease both; }
+        .eyebrow { margin: 0 0 10px; color: #a8d4e5; font: 700 .72rem/1.2 Arial, sans-serif; letter-spacing: .18em; text-transform: uppercase; }
+        h1, h2, p { margin-top: 0; }
+        .menu-panel h1 { margin-bottom: 8px; color: #fff7e7; font-size: 3.1rem; font-weight: 500; line-height: .98; }
+        .menu-panel h2 { margin-bottom: 8px; color: #fff7e7; font-size: 2rem; font-weight: 500; }
+        .menu-subtitle { margin-bottom: 28px; color: #c4d3dc; font: .94rem/1.5 Arial, sans-serif; }
+        .menu-label { display: grid; gap: 7px; margin: 0 0 14px; color: #d9e5eb; font: 700 .8rem Arial, sans-serif; }
+        .menu-label select { min-height: 44px; padding: 8px 10px; border: 1px solid rgba(220,240,255,.24); border-radius: 5px; background: rgba(3,10,18,.55); color: #fff; }
+        .reglas-menu { margin-top: 15px; border-top: 1px solid rgba(220,240,255,.2); font: .82rem/1.45 Arial, sans-serif; }
+        .reglas-menu summary { padding: 13px 2px 4px; color: #f3d58d; cursor: pointer; font-weight: 800; }
+        .reglas-scroll { max-height: 32vh; margin-top: 10px; padding: 0 9px 10px 0; overflow-y: auto; color: #d6e1e8; scrollbar-color: rgba(219,234,254,.42) rgba(15,23,42,.3); }
+        .reglas-scroll h3 { margin: 12px 0 4px; color: #fff3d4; font: 800 .78rem Arial, sans-serif; text-transform: uppercase; }
+        .reglas-scroll p, .reglas-scroll ul { margin: 0 0 8px; }
+        .reglas-scroll ul { padding-left: 18px; }
+        .reglas-intro { margin-bottom: 12px !important; color: #c7d6df; }
+        .reglas-cartas { display: grid; gap: 8px; }
+        .regla-carta { padding: 10px 11px; border: 1px solid rgba(220,240,255,.14); border-left: 3px solid var(--regla-color, #f4c66a); border-radius: 6px; background: rgba(3,10,18,.32); }
+        .regla-carta h4 { display: flex; align-items: center; gap: 8px; margin: 0 0 5px; color: #fff3d4; font: 800 .77rem/1.3 Arial, sans-serif; }
+        .regla-insignia { display: inline-grid; min-width: 34px; min-height: 26px; place-items: center; padding: 3px 6px; border: 1px solid color-mix(in srgb, var(--regla-color, #f4c66a) 55%, transparent); border-radius: 4px; background: color-mix(in srgb, var(--regla-color, #f4c66a) 13%, transparent); color: var(--regla-color, #f4c66a); font-size: .67rem; letter-spacing: .04em; }
+        .regla-carta p { margin: 0; color: #d6e1e8; }
+        .regla-sietes { --regla-color: #a8e6cf; }
+        .regla-sota { --regla-color: #b9c9ff; }
+        .regla-revolucion { --regla-color: #ff9c83; }
+        .regla-corte { --regla-color: #f4c66a; }
+        .reglas-roles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin: 6px 0 10px; }
+        .regla-rol-mesa { padding: 9px 10px; border: 1px solid rgba(220,240,255,.14); border-radius: 6px; background: rgba(3,10,18,.28); }
+        .regla-rol-mesa h4 { margin: 0 0 6px; color: #f3d58d; font: 800 .72rem Arial, sans-serif; }
+        .regla-rol-mesa ol { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; counter-reset: rol; }
+        .regla-rol-mesa li { display: flex; align-items: baseline; gap: 6px; color: #d6e1e8; font-size: .76rem; }
+        .regla-rol-mesa li::before { counter-increment: rol; content: counter(rol) "º"; min-width: 19px; color: #a8d4e5; font-size: .68rem; font-weight: 800; }
+        .regla-intercambio { padding: 9px 10px; border-radius: 6px; background: rgba(244,198,106,.08); }
+        .regla-intercambio strong { color: #f3d58d; }
+        @media (max-width: 380px) { .reglas-roles { grid-template-columns: 1fr; } }
+        .menu-options, .form-container { display: grid; gap: 12px; }
+        .btn-menu { min-height: 52px; padding: 12px 17px; border: 1px solid rgba(226,240,255,.28); border-radius: 6px; background: rgba(255,255,255,.08); color: #f8fafc; cursor: pointer; font: 700 .95rem/1.25 Arial, sans-serif; text-align: left; transition: background .18s ease, border-color .18s ease, transform .18s ease; }
+        .btn-menu:hover { transform: translateY(-2px); border-color: rgba(244,198,106,.75); background: rgba(255,255,255,.14); }
+        .btn-menu.primary { border-color: rgba(244,198,106,.55); background: rgba(141,103,42,.35); }
+        .btn-menu.back { min-height: 44px; background: rgba(138,54,54,.2); }
+        .form-container { gap: 9px; }
+        .form-container label { margin-top: 8px; color: #d9e5eb; font: 700 .78rem Arial, sans-serif; }
+        .form-container input { width: 100%; min-height: 46px; padding: 10px 12px; border: 1px solid rgba(220,240,255,.24); border-radius: 5px; background: rgba(3,10,18,.42); color: #fff; font: 1rem Arial, sans-serif; }
+        .form-container input[readonly] { color: var(--gold); font-weight: 700; letter-spacing: .1em; }
+        .form-error { min-height: 1.1em; margin: 2px 0 0; color: #fecaca; font: .8rem Arial, sans-serif; }
+        #estado-sala-online { min-height: 1.2em; margin: 0; color: #eaffb0; font: .8rem/1.4 Arial, sans-serif; }
+        [hidden] { display: none !important; }
+        #pantalla-juego { visibility: hidden; opacity: 0; background: radial-gradient(ellipse at 50% 43%, #1d7547 0%, #105535 43%, #073b27 78%, #04291d 100%); transition: opacity .65s ease, visibility .65s ease; }
+        body.en-partida #pantalla-juego { visibility: visible; opacity: 1; }
+        body.en-partida #menu-bienvenida { visibility: hidden; opacity: 0; pointer-events: none; }
+        #pantalla-juego::before { content: ""; position: absolute; inset: 4% 6% 21%; border: 1px solid rgba(233,255,242,.08); border-radius: 48%; box-shadow: inset 0 0 75px rgba(1,26,17,.14), 0 0 80px rgba(0,0,0,.08); pointer-events: none; }
+        #hud-global, #notificador-efectos, .zona-jugador, #control-inferior-contenedor { font-family: Arial, sans-serif; }
+        #hud-global { position: absolute; z-index: 5; top: 16px; left: 16px; max-width: min(58vw, 340px); padding: 11px 15px; border-left: 3px solid var(--gold); border-radius: 4px; background: rgba(0,0,0,.43); box-shadow: 0 8px 24px rgba(0,0,0,.18); color: #f8fafc; font-size: .82rem; line-height: 1.6; }
+        #notificador-efectos { position: absolute; z-index: 5; top: 68px; right: 16px; display: none; max-width: 42vw; padding: 10px 13px; border: 1px solid rgba(254,202,202,.4); border-radius: 4px; background: rgba(127,29,29,.82); color: #fff; font-size: .75rem; font-weight: 800; text-align: center; }
+        #aviso-evento { position: absolute; z-index: 28; top: 35%; left: 50%; max-width: min(86vw, 560px); padding: 13px 20px; transform: translate(-50%, -50%); border: 2px solid #ffe08a; border-radius: 9px; background: rgba(12,28,24,.96); box-shadow: 0 0 20px rgba(255,224,138,.45), 0 8px 25px rgba(0,0,0,.55); color: #fff3c4; font: 900 clamp(.9rem, 2vw, 1.2rem)/1.35 Arial, sans-serif; text-align: center; pointer-events: none; }
+        #aviso-evento.doble-salto { animation: animacion-doble-salto 1.8s cubic-bezier(.2,.8,.3,1) both; }
+        #aviso-evento[hidden] { display: none; }
+        .zona-jugador { position: absolute; z-index: 2; min-width: 130px; padding: 10px 13px; border: 2px solid var(--player-color, rgba(255,255,255,.45)); border-radius: 8px; background: rgba(1,20,13,.46); color: white; text-align: center; box-shadow: 0 8px 24px rgba(0,0,0,.12); }
+        .zona-jugador strong { font-size: .9rem; }
+        .zona-jugador .rol-tag { display: block; margin-top: 4px; color: #f3d58d; font-size: .67rem; font-weight: 800; text-transform: uppercase; }
+        .contador-roles { display: block; margin-top: 5px; color: #b8d5c4; font-size: .61rem; font-weight: 700; white-space: nowrap; }
+        #zona-humano .contador-roles { display: inline-block; margin: 0 0 0 8px; color: #d9ff69; }
+        .zona-jugador, #zona-humano { overflow: visible; }
+        #zona-humano { position: relative; }
+        .zona-jugador, #zona-humano { transition: opacity .2s ease, color .2s ease, box-shadow .2s ease, border-color .2s ease; }
+        #zona-humano { border: 2px solid var(--player-color, rgba(255,255,255,.45)); border-radius: 7px; padding: 4px 7px; }
+        .zona-jugador.activo, #zona-humano.activo {
+            border-color: var(--player-color, #d9ff69);
+            background: linear-gradient(90deg, rgba(18,91,50,.98), rgba(7,46,29,.96));
+            box-shadow: 0 0 8px var(--player-color, #d9ff69), 0 0 20px color-mix(in srgb, var(--player-color, #d9ff69) 78%, transparent), inset 0 0 16px color-mix(in srgb, var(--player-color, #d9ff69) 26%, transparent);
+            animation: pulso-turno 1.5s ease-in-out infinite;
+        }
+        #zona-humano.activo strong { color: #f2ffb8; text-shadow: 0 0 8px #d9ff69, 0 0 16px rgba(163,255,97,.9); }
+        .zona-jugador.pasado, #zona-humano.pasado { opacity: .48; filter: grayscale(.72); box-shadow: none; animation: none; }
+        .zona-jugador.pasado strong, #zona-humano.pasado strong { color: #7b8791; text-decoration: line-through; }
+        .zona-jugador.fuera, #zona-humano.fuera { opacity: .48; }
+        #control-inferior-contenedor.pasado { border-color: rgba(148,163,184,.34); box-shadow: none; animation: none; }
+        #control-inferior-contenedor.pasado #contenedor-mano-humano .carta { filter: brightness(.72) saturate(.7); }
+        #control-inferior-contenedor.pasado .btn-juego:disabled { filter: brightness(.72); }
+        .aviso-salto { position: absolute; z-index: 30; top: -25px; left: 50%; padding: 6px 10px; border: 1px solid rgba(255,224,138,.72); border-radius: 4px; background: rgba(12,28,24,.94); box-shadow: 0 4px 14px rgba(0,0,0,.38); color: #ffe08a; font: 900 .76rem Arial, sans-serif; white-space: nowrap; pointer-events: none; animation: animacion-salto 2.8s ease-out both; }
+        .aviso-salto.humano { top: 36%; left: 50%; transform: translateX(-50%); padding: 11px 22px; border: 2px solid #ffe08a; border-radius: 8px; background: rgba(115,24,24,.96); box-shadow: 0 0 14px rgba(255,224,138,.88), 0 8px 22px rgba(0,0,0,.6); color: #fff3c4; font-size: clamp(1.2rem, 3vw, 1.7rem); letter-spacing: .12em; }
+        #aviso-sota-pueblo, #aviso-grupo-sotas { position: absolute; z-index: 25; right: 18px; max-width: min(32vw, 340px); padding: 14px 18px; transform: translateX(130%); border: 2px solid #ffe08a; border-radius: 10px; background: rgba(65,41,10,.96); box-shadow: 0 0 18px rgba(255,224,138,.78), 0 10px 28px rgba(0,0,0,.5); color: #fff3c4; font: 900 clamp(.9rem, 1.5vw, 1.2rem)/1.35 Arial, sans-serif; text-align: center; pointer-events: none; }
+        #aviso-sota-pueblo { top: 43%; }
+        #aviso-grupo-sotas { top: calc(43% + 86px); border-color: #d9ff69; background: rgba(28,65,10,.97); box-shadow: 0 0 18px rgba(217,255,105,.78), 0 10px 28px rgba(0,0,0,.5); }
+        #aviso-sota-pueblo.animando, #aviso-grupo-sotas.animando { animation: aviso-sota-pueblo 3.2s ease both; }
+        #zonas-rivales { position: absolute; z-index: 2; top: 16%; left: 50%; display: grid; grid-template-columns: repeat(auto-fit, minmax(90px, 150px)); justify-content: center; gap: 10px; width: min(90vw, 820px); transform: translateX(-50%); }
+        #zonas-rivales .zona-jugador { position: relative; min-width: 0; padding: 9px 6px; }
+        .aviso-puesto { position: absolute; z-index: 30; top: auto; right: auto; bottom: calc(100% + 9px); left: 50%; width: max-content; max-width: min(78vw, 260px); padding: 8px 12px; transform: translateX(-50%); border: 1px solid var(--player-color, #ffe08a); border-radius: 8px; background: rgba(12,28,24,.97); box-shadow: 0 0 14px color-mix(in srgb, var(--player-color, #ffe08a) 45%, transparent), 0 5px 18px rgba(0,0,0,.5); color: #fff3c4; font: 900 clamp(.7rem, 1.4vw, .94rem)/1.25 Arial, sans-serif; text-align: center; pointer-events: none; animation: aviso-puesto .32s cubic-bezier(.2,.8,.3,1) both; }
+        .aviso-puesto::after { position: absolute; top: 100%; left: 50%; width: 9px; height: 9px; transform: translate(-50%,-50%) rotate(45deg); border-right: 1px solid var(--player-color, #ffe08a); border-bottom: 1px solid var(--player-color, #ffe08a); background: rgba(12,28,24,.97); content: ""; }
+        @keyframes aviso-puesto { from { opacity: 0; translate: -50% 8px; scale: .92; } to { opacity: 1; translate: -50% 0; scale: 1; } }
+        #zona-central-mesa { position: absolute; top: 47%; left: 50%; display: flex; align-items: center; justify-content: center; gap: clamp(3px, 1vw, 10px); width: min(58vw, 610px); height: 170px; transform: translate(-50%, -50%); border: 1px dashed rgba(239,255,243,.2); border-radius: 14px; background: rgba(3,39,25,.12); }
+        #animacion-reparto { position: fixed; z-index: 29; inset: 0; overflow: hidden; pointer-events: none; }
+        .carta-reparto { position: fixed; width: 25px; height: 35px; border: 1px solid rgba(255,248,233,.86); border-radius: 4px; background: repeating-linear-gradient(135deg, #8f1d2c 0 4px, #f8e7c4 4px 6px, #172d55 6px 10px); box-shadow: 0 2px 8px rgba(0,0,0,.55); }
+            #modal-intercambio { position: absolute; z-index: 40; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(2,10,8,.78); backdrop-filter: blur(7px); }
+            #panel-intercambio { width: min(94vw, 760px); max-height: 86vh; padding: 22px; overflow: auto; border: 1px solid rgba(217,255,105,.7); border-radius: 10px; background: rgba(8,31,22,.97); box-shadow: 0 0 18px rgba(163,255,97,.36), 0 18px 60px rgba(0,0,0,.55); font-family: Arial, sans-serif; }
+            #panel-intercambio h2 { margin: 0 0 7px; color: #eaffb0; font: 800 1.25rem Arial, sans-serif; }
+            #panel-intercambio p { margin: 0 0 14px; color: #d2e5d8; font: .9rem/1.45 Arial, sans-serif; }
+            #cartas-intercambio { display: flex; flex-wrap: wrap; justify-content: center; gap: 9px; min-height: 110px; padding: 12px 4px; }
+            #cartas-intercambio .carta { flex-basis: 68px; }
+            #cartas-intercambio .carta.seleccionada { outline: 3px solid #d9ff69; transform: translateY(-8px); }
+            #confirmar-intercambio { display: block; min-height: 44px; margin: 10px auto 0; padding: 10px 22px; border: 1px solid #bef264; border-radius: 5px; background: #4d7c0f; color: white; font: 800 .9rem Arial, sans-serif; cursor: pointer; }
+            #confirmar-intercambio:disabled { border-color: #475569; background: #334155; color: #94a3b8; cursor: not-allowed; }
+            #modal-resumen-intercambio { position: absolute; z-index: 41; inset: 0; display: grid; place-items: center; padding: 16px; background: rgba(2,10,8,.78); backdrop-filter: blur(7px); }
+            #panel-resumen-intercambio { width: min(94vw, 620px); max-height: 86vh; padding: 22px; overflow: auto; border: 1px solid rgba(217,255,105,.7); border-radius: 10px; background: rgba(8,31,22,.97); box-shadow: 0 0 18px rgba(163,255,97,.36), 0 18px 60px rgba(0,0,0,.55); font-family: Arial, sans-serif; }
+            #panel-resumen-intercambio h2 { margin: 0 0 8px; color: #eaffb0; font: 800 1.2rem Arial, sans-serif; }
+            #panel-resumen-intercambio h3 { margin: 16px 0 8px; color: #f3d58d; font: 800 .86rem Arial, sans-serif; }
+            .cartas-resumen-intercambio { display: flex; flex-wrap: wrap; gap: 9px; min-height: 40px; }
+            .cartas-resumen-intercambio .carta { cursor: default; }
+            #cerrar-resumen-intercambio { display: block; min-height: 44px; margin: 16px auto 0; padding: 10px 22px; border: 1px solid #bef264; border-radius: 5px; background: #4d7c0f; color: white; font: 800 .9rem Arial, sans-serif; cursor: pointer; }
+        #mesa-vacia-texto { padding: 12px; color: rgba(238,255,245,.45); font: italic .9rem Georgia, serif; text-align: center; }
+        .carta { position: relative; display: flex; flex: 0 0 68px; flex-direction: column; justify-content: space-between; width: 68px; height: 104px; padding: 7px; overflow: hidden; border-radius: 7px; box-shadow: 0 5px 12px rgba(0,0,0,.3); cursor: pointer; user-select: none; transition: transform .18s ease, box-shadow .18s ease; }
+        .carta.seleccionada { z-index: 1; transform: translateY(-25px) !important; box-shadow: 0 12px 22px rgba(0,0,0,.48), 0 0 0 2px var(--gold); }
+        .carta-indice { font: 800 1rem/1 Arial, sans-serif; }
+        .carta-icono-central { align-self: center; font-size: 1.4rem; line-height: 1; }
+        .carta-palo-mini { font: 700 .72rem Arial, sans-serif; text-align: right; }
+        .carta.palo-oros { border: 2px solid #d97706; background: #fffbeb; color: #b45309; }
+        .carta.palo-copas { border: 2px solid #dc2626; background: #fff5f5; color: #991b1b; }
+        .carta.palo-espadas { border: 2px solid #2563eb; background: #eff6ff; color: #1d4ed8; }
+        .carta.palo-bastos { border: 2px solid #16a34a; background: #f0fdf4; color: #15803d; }
+        #control-inferior-contenedor { position: absolute; z-index: 8; right: 0; bottom: 0; left: 0; display: flex; flex-direction: column; gap: 9px; height: min(254px, 34vh); min-height: 202px; padding: 10px clamp(10px, 3vw, 28px) max(10px, env(safe-area-inset-bottom)); border-top: 1px solid rgba(255,255,255,.13); background: linear-gradient(0deg, rgba(2,10,8,.94), rgba(3,20,14,.76)); }
+        #control-inferior-contenedor.activo {
+            border: 2px solid var(--player-color, #d9ff69);
+            background: linear-gradient(90deg, rgba(9,45,30,.98), rgba(3,18,12,.94));
+            box-shadow: 0 0 9px var(--player-color, #d9ff69), 0 0 24px color-mix(in srgb, var(--player-color, #d9ff69) 82%, transparent), inset 0 0 34px color-mix(in srgb, var(--player-color, #d9ff69) 24%, transparent);
+            animation: pulso-turno 1.5s ease-in-out infinite;
+        }
+        #estado-humano { display: flex; flex: 0 0 auto; align-items: center; justify-content: space-between; min-height: 22px; color: white; font-size: .82rem; }
+        #hud-turno-alerta { color: var(--gold); font-size: .75rem; font-weight: 800; text-align: right; }
+        #hud-turno-alerta.obligado-sietes { color: #eaff9b; text-shadow: 0 0 8px rgba(217,255,105,.9); }
+        #btn-salir-partida { position: absolute; z-index: 50; top: 16px; right: 16px; min-height: 40px; padding: 9px 14px; border: 1px solid rgba(254,202,202,.6); border-radius: 5px; background: rgba(127,29,29,.86); color: #fff; cursor: pointer; font: 800 .78rem Arial, sans-serif; }
+        #btn-salir-partida:hover { border-color: #fecaca; background: #991b1b; }
+        #chat-rapido { position: absolute; z-index: 20; right: 18px; bottom: calc(max(202px, min(254px, 34vh)) + 10px); font-family: Arial, sans-serif; }
+        #btn-comentarios { min-height: 38px; padding: 8px 12px; border: 1px solid rgba(255,248,233,.55); border-radius: 6px; background: rgba(8,31,22,.94); color: #fff8e9; cursor: pointer; font: 800 .78rem Arial, sans-serif; box-shadow: 0 4px 14px rgba(0,0,0,.36); }
+        #lista-comentarios { display: grid; gap: 5px; width: min(72vw, 225px); margin-bottom: 7px; padding: 8px; border: 1px solid rgba(255,248,233,.38); border-radius: 8px; background: rgba(4,20,14,.97); box-shadow: 0 8px 24px rgba(0,0,0,.48); }
+        #lista-comentarios button { padding: 8px 9px; border: 1px solid rgba(255,255,255,.12); border-radius: 5px; background: rgba(255,255,255,.07); color: #fff8e9; cursor: pointer; font: 700 .76rem Arial, sans-serif; text-align: left; }
+        #lista-comentarios button:hover, #lista-comentarios button:focus-visible { border-color: var(--gold); background: rgba(244,198,106,.15); }
+        .nube-comentario { position: absolute; z-index: 12; bottom: calc(100% + 12px); left: 50%; max-width: min(70vw, 260px); padding: 10px 15px; transform: translateX(-50%); border: 2px solid #fff8e9; border-radius: 18px; background: #fff8e9; box-shadow: 0 4px 18px rgba(0,0,0,.46), 0 0 15px rgba(244,198,106,.42); color: #14251b; font: 800 .82rem/1.3 Arial, sans-serif; text-align: center; white-space: nowrap; pointer-events: none; }
+        .nube-comentario::after { position: absolute; bottom: -9px; left: 50%; width: 14px; height: 14px; transform: translateX(-50%) rotate(45deg); border-right: 2px solid #fff8e9; border-bottom: 2px solid #fff8e9; background: #fff8e9; content: ""; }
+        #contenedor-mano-humano { display: flex; flex: 1 1 auto; align-items: flex-end; justify-content: center; width: 100%; min-height: 100px; padding: 27px 3px 3px; overflow: hidden; }
+        #contenedor-mano-humano .carta { flex: 0 1 68px; min-width: 34px; margin-left: clamp(-25px, -2.25vw, -10px); }
+        #contenedor-mano-humano .carta:first-child { margin-left: 0; }
+        .botones-accion-bloque { display: flex; flex: 0 0 44px; justify-content: center; gap: 12px; }
+        .btn-juego { min-width: 132px; padding: 9px 24px; border: 0; border-radius: 5px; cursor: pointer; font: 800 .85rem Arial, sans-serif; letter-spacing: .08em; text-transform: uppercase; transition: filter .15s ease, transform .15s ease; }
+        .btn-juego:not(:disabled):hover { filter: brightness(1.12); transform: translateY(-1px); }
+        #btn-jugar { background: #22c55e; color: #052e16; }
+        #btn-pasar { background: #ef4444; color: #fff; }
+        .btn-juego:disabled { background: #334155; color: #94a3b8; cursor: not-allowed; }
+        @keyframes arrival { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes panel-in { from { opacity: 0; transform: translateY(7px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes animacion-salto { 0% { opacity: 0; transform: translate(-50%, 10px) scale(.82); } 18% { opacity: 1; transform: translate(-50%, 0) scale(1.06); } 30% { transform: translate(-50%, 0) scale(1); } 78% { opacity: 1; transform: translate(-50%, -7px); } 100% { opacity: 0; transform: translate(-50%, -16px); } }
+        @keyframes aviso-sota-pueblo { 0% { opacity: 0; transform: translateX(130%); } 12%, 78% { opacity: 1; transform: translateX(0); } 20%, 34% { box-shadow: 0 0 26px rgba(255,224,138,1), 0 10px 28px rgba(0,0,0,.5); } 100% { opacity: 0; transform: translateX(130%); } }
+        @keyframes animacion-doble-salto { 0% { opacity: 0; transform: translate(-50%, -50%) scale(.65) rotate(-3deg); } 18% { opacity: 1; transform: translate(-50%, -50%) scale(1.12) rotate(2deg); } 32%, 78% { opacity: 1; transform: translate(-50%, -50%) scale(1) rotate(0); } 100% { opacity: 0; transform: translate(-50%, -50%) scale(.9); } }
+        @keyframes pulso-turno { 0%, 100% { box-shadow: 0 0 8px var(--player-color, #d9ff69), 0 0 20px color-mix(in srgb, var(--player-color, #d9ff69) 78%, transparent), inset 0 0 14px color-mix(in srgb, var(--player-color, #d9ff69) 25%, transparent); } 50% { box-shadow: 0 0 14px var(--player-color, #d9ff69), 0 0 32px color-mix(in srgb, var(--player-color, #d9ff69) 92%, transparent), inset 0 0 22px color-mix(in srgb, var(--player-color, #d9ff69) 40%, transparent); } }
+        @media (max-width: 650px) {
+            .menu-panel h1 { font-size: 2.45rem; }
+            #hud-global { top: 10px; left: 10px; padding: 8px 10px; font-size: .72rem; }
+            #notificador-efectos { top: 10px; right: 10px; padding: 8px; font-size: .65rem; }
+            .zona-jugador { min-width: 92px; padding: 8px 6px; }
+            .zona-jugador strong { font-size: .75rem; }
+            .zona-jugador .rol-tag { font-size: .58rem; }
+            #zonas-rivales { top: 14%; grid-template-columns: repeat(auto-fit, minmax(64px, 1fr)); gap: 5px; width: 96vw; }
+            #zonas-rivales .zona-jugador { padding: 6px 3px; }
+            #zona-central-mesa { top: 48%; width: 72vw; height: 130px; }
+            #aviso-sota-pueblo, #aviso-grupo-sotas { right: 8px; max-width: 42vw; padding: 10px 12px; font-size: .85rem; }
+            #aviso-sota-pueblo { top: 42%; }
+            #aviso-grupo-sotas { top: calc(42% + 68px); }
+            #zona-central-mesa .carta { flex-basis: 52px; width: 52px; height: 80px; padding: 5px; }
+            #zona-central-mesa .carta-indice { font-size: .82rem; }
+            #zona-central-mesa .carta-icono-central { font-size: 1rem; }
+            #control-inferior-contenedor { height: min(232px, 32vh); min-height: 188px; gap: 6px; padding-right: 7px; padding-left: 7px; }
+            #estado-humano { font-size: .72rem; }
+            #contenedor-mano-humano { padding-top: 24px; }
+            #contenedor-mano-humano .carta { flex-basis: 52px; height: 88px; min-width: 25px; margin-left: clamp(-30px, -4vw, -16px); padding: 5px; }
+            #contenedor-mano-humano .carta-indice { font-size: .78rem; }
+            #contenedor-mano-humano .carta-icono-central { font-size: 1rem; }
+            #contenedor-mano-humano .carta-palo-mini { font-size: .6rem; }
+            .btn-juego { min-width: 112px; }
+        }
+        @media (max-height: 560px) and (min-width: 651px) { #control-inferior-contenedor { height: 190px; min-height: 180px; } #zona-central-mesa { top: 45%; height: 125px; } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; } }
+    </style>
+</head>
+<body>
+    <main id="menu-bienvenida" aria-label="Menú principal">
+        <div class="menu-shell">
+            <section class="glass-panel menu-panel" id="panel-inicial">
+                <p class="eyebrow">Aguadulce · Naipes españoles</p>
+                <h1>El Presidente</h1>
+                <p class="menu-subtitle">Una mesa, 48 cartas y una noche larga junto al mar.</p>
+                <label class="menu-label" for="cantidad-jugadores">Número de jugadores
+                    <select id="cantidad-jugadores"><option value="3">3 jugadores</option><option value="4" selected>4 jugadores</option><option value="5">5 jugadores</option><option value="6">6 jugadores</option></select>
+                </label>
+                <div class="menu-options">
+                    <button class="btn-menu primary" id="btn-modo-cpu" type="button">Jugar contra la CPU</button>
+                    <button class="btn-menu" id="btn-abrir-multi" type="button">Multijugador Online (Vasilones)</button>
+                </div>
+                <details class="reglas-menu">
+                    <summary>Instrucciones y reglas</summary>
+                    <div class="reglas-scroll">
+                        <h3>Objetivo y baraja</h3>
+                        <p class="reglas-intro">Partida de 3 a 6 jugadores con 48 cartas españolas, incluidos ochos y nueves. Descarta toda tu mano para conseguir el mejor puesto. Fuerza ascendente: 3, 4, 5, 6, 7, 8, 9, Sota (10), Caballo (11), Rey (12), As (1) y 2. En la primera ronda abre el 3 de Oros; en las siguientes, abre el Culo.</p>
+                        <h3>Jugadas y bazas</h3>
+                        <p>Juega una, dos, tres o cuatro cartas del mismo valor. Para responder, juega la misma cantidad con fuerza igual o mayor. Repetir el mismo valor salta a los siguientes tantos jugadores como cartas tenga la combinación; no cuentan como pasados y vuelven a tener turno después. Si pasas, quedas fuera hasta que se limpie la baza. Cuando todos los que pueden responder han jugado o pasado, la baza se limpia y quien hizo la última jugada válida abre.</p>
+                        <h3>Cartas especiales</h3>
+                        <div class="reglas-cartas">
+                            <article class="regla-carta regla-sietes">
+                                <h4><span class="regla-insignia">7</span> Sietes · cierre obligatorio</h4>
+                                <p>Cuando se juega un 7, quien conserve sietes debe tirar todos los que le queden juntos en su turno. Al terminar los sietes, la baza se limpia y quien jugó el último 7 abre.</p>
+                            </article>
+                            <article class="regla-carta regla-sota">
+                                <h4><span class="regla-insignia">SOTA</span> La Sota · cambia la fuerza</h4>
+                                <p>La siguiente jugada debe ser de fuerza menor o igual. Durante la Revolución, debe ser mayor o igual.</p>
+                            </article>
+                            <article class="regla-carta regla-revolucion">
+                                <h4><span class="regla-insignia">4 iguales</span> Cuarteto · Revolución</h4>
+                                <p>Jugar cuatro cartas iguales activa o desactiva la Revolución e invierte la jerarquía durante el resto de la ronda.</p>
+                            </article>
+                            <article class="regla-carta regla-corte">
+                                <h4><span class="regla-insignia">2♦</span> 2 de Oros · corta la baza</h4>
+                                <p>Jugado como carta individual, corta incluso una pareja o un trío. No corta durante la Revolución ni el cierre de sietes, y no puede ser la última carta de la mano.</p>
+                            </article>
+                        </div>
+                        <h3>Roles · orden de descarte</h3>
+                        <p class="reglas-intro">El puesto se asigna según quién se queda sin cartas primero:</p>
+                        <div class="reglas-roles">
+                            <section class="regla-rol-mesa"><h4>Mesa de 3</h4><ol><li>Presidente</li><li>Neutral</li><li>Culo</li></ol></section>
+                            <section class="regla-rol-mesa"><h4>Mesa de 4</h4><ol><li>Presidente</li><li>Vicepresidente</li><li>Vice-Culo</li><li>Culo</li></ol></section>
+                            <section class="regla-rol-mesa"><h4>Mesa de 5</h4><ol><li>Presidente</li><li>Vicepresidente</li><li>Neutral</li><li>Vice-Culo</li><li>Culo</li></ol></section>
+                            <section class="regla-rol-mesa"><h4>Mesa de 6</h4><ol><li>Presidente</li><li>Vicepresidente</li><li>Neutral</li><li>Neutral</li><li>Vice-Culo</li><li>Culo</li></ol></section>
+                        </div>
+                        <h3>Intercambio para la siguiente ronda</h3>
+                        <p class="regla-intercambio"><strong>Culo:</strong> entrega sus dos cartas más altas al Presidente; el Presidente elige dos cartas para darle a cambio. <strong>Vice-Culo:</strong> entrega su carta más alta al Vicepresidente; este elige una para darle a cambio. Los Neutrales no intercambian.</p>
+                    </div>
+                </details>
+            </section>
+            <section class="glass-panel menu-panel" id="panel-multijugador" hidden>
+                <p class="eyebrow">Mesa compartida</p><h2>Modo Vasilones</h2>
+                <p class="menu-subtitle">Prepara la mesa o entra con el código de tus amigos.</p>
+                <p id="estado-sala-online" role="status" aria-live="polite"></p>
+                <div class="menu-options" id="opciones-multi-base">
+                    <button class="btn-menu primary" id="btn-montar" type="button">Montar Mesa de Playa</button>
+                    <button class="btn-menu" id="btn-unirse" type="button">Unirse a Mesa Existente</button>
+                    <button class="btn-menu" id="btn-reanudar-online" type="button" hidden>Reanudar partida</button>
+                    <button class="btn-menu back" id="btn-volver-menu" type="button">Volver</button>
+                </div>
+                <form class="form-container" id="form-montar-mesa" hidden>
+                    <label for="nombre-creador">Nombre del jugador</label><input id="nombre-creador" name="nombre" type="text" maxlength="24" autocomplete="nickname" required>
+                    <label for="codigo-generado-input">Código de sala</label><input id="codigo-generado-input" type="text" readonly aria-readonly="true">
+                    <p class="form-error" id="error-montar" aria-live="polite"></p>
+                    <button class="btn-menu" id="btn-anadir-cademir" type="button" hidden>Añadir a Cademir (CPU)</button>
+                    <button class="btn-menu primary" type="submit">Abrir Mesa y Esperar Amigos</button>
+                    <button class="btn-menu back" type="button" data-volver-submenu>Volver</button>
+                </form>
+                <form class="form-container" id="form-unirse-mesa" hidden>
+                    <label for="nombre-invitado">Nombre del jugador</label><input id="nombre-invitado" name="nombre" type="text" maxlength="24" autocomplete="nickname" placeholder="Tu nombre" required>
+                    <label for="codigo-unirse-input">Código de sala (TOLAS y 4 números)</label><input id="codigo-unirse-input" name="codigo" type="text" maxlength="9" placeholder="TOLAS1234" autocomplete="off" required>
+                    <p class="form-error" id="error-unirse" aria-live="polite"></p>
+                    <button class="btn-menu primary" type="submit">Entrar a la Mesa</button>
+                    <button class="btn-menu back" type="button" data-volver-submenu>Volver</button>
+                </form>
+            </section>
+        </div>
+    </main>
+    <section id="pantalla-juego" aria-label="Mesa de juego">
+        <div id="hud-global"><div>Fase: <strong id="hud-fase">Baza regular</strong></div><div>Régimen: <strong id="hud-regimen">Normal</strong></div><div id="hud-pasados">Pasados: ninguno</div><div id="hud-sala" hidden></div></div>
+        <button id="btn-salir-partida" type="button" hidden>Salir de la partida</button>
+        <div id="notificador-efectos" role="status">SOTA: SIGUIENTE JUGADA MENOR O IGUAL</div>
+        <div id="aviso-evento" role="status" aria-live="polite" hidden></div>
+        <div id="aviso-sota-pueblo" role="status" aria-live="polite" hidden>La carta del pueblo! solo salva al pueblo</div>
+        <div id="aviso-grupo-sotas" role="status" aria-live="polite" hidden></div>
+        <div id="zonas-rivales" aria-label="Rivales"></div>
+        <div id="zona-central-mesa" aria-live="polite"><div id="mesa-vacia-texto">Mesa vacía. Comienza la baza.</div></div>
+        <div id="animacion-reparto" aria-hidden="true" hidden></div>
+        <div id="chat-rapido" hidden>
+            <div id="lista-comentarios" role="group" aria-label="Frases rápidas" hidden>
+                <button type="button" data-comentario="saltaló, saltaló">saltaló, saltaló</button>
+                <button type="button" data-comentario="Silencio culo">Silencio culo</button>
+                <button type="button" data-comentario="¡Eres increíble!">¡Eres increíble!</button>
+                <button type="button" data-comentario="¡Soy muuuy bueno!">¡Soy muuuy bueno!</button>
+                <button type="button" data-comentario="¿Cómo eres tan bueno?">¿Cómo eres tan bueno?</button>
+                <button type="button" data-comentario="¡Eres mi fan!">¡Eres mi fan!</button>
+                <button type="button" data-comentario="La carta del pueblo solo salva al pueblo.">La carta del pueblo solo salva al pueblo.</button>
+            </div>
+            <button id="btn-comentarios" type="button" aria-expanded="false" aria-controls="lista-comentarios">💬 Comentarios</button>
+        </div>
+        <div id="control-inferior-contenedor">
+            <div id="estado-humano"><div id="zona-humano"><strong id="nombre-humano">Jugador</strong> · <span id="rol-humano">Neutral</span><span id="conteo-roles-humano" class="contador-roles"></span><span id="nube-comentario-humano" class="nube-comentario" role="status" hidden><span id="nube-texto-humano"></span></span></div><div id="hud-turno-alerta" aria-live="polite"></div></div>
+            <div id="contenedor-mano-humano" aria-label="Tu mano"></div>
+            <div class="botones-accion-bloque"><button id="btn-pasar" class="btn-juego" type="button" disabled>Pasar</button><button id="btn-jugar" class="btn-juego" type="button" disabled>Jugar</button></div>
+        </div>
+        <div id="modal-intercambio" hidden>
+            <section id="panel-intercambio" role="dialog" aria-modal="true" aria-labelledby="titulo-intercambio">
+                <h2 id="titulo-intercambio">Intercambio de Furia</h2>
+                <p id="instruccion-intercambio"></p>
+                <div id="cartas-intercambio"></div>
+                <p id="estado-seleccion-intercambio" aria-live="polite"></p>
+                <button id="confirmar-intercambio" type="button" disabled>Confirmar intercambio</button>
+            </section>
+        </div>
+        <div id="modal-resumen-intercambio" hidden>
+            <section id="panel-resumen-intercambio" role="dialog" aria-modal="true" aria-labelledby="titulo-resumen-intercambio">
+                <h2 id="titulo-resumen-intercambio">Resumen del intercambio</h2>
+                <h3 id="etiqueta-entregadas">Las cartas que entregaste</h3>
+                <div id="cartas-entregadas" class="cartas-resumen-intercambio"></div>
+                <h3 id="etiqueta-recibidas">Las cartas que recibiste</h3>
+                <div id="cartas-recibidas" class="cartas-resumen-intercambio"></div>
+                <button id="cerrar-resumen-intercambio" type="button">Continuar</button>
+            </section>
+        </div>
+    </section>
+    <script>
+        "use strict";
+        const indicesTradicionales = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+        const palosConfig = [
+            { id: "oros", emoji: "🟡", claseCss: "palo-oros" },
+            { id: "copas", emoji: "🏆", claseCss: "palo-copas" },
+            { id: "espadas", emoji: "⚔️", claseCss: "palo-espadas" },
+            { id: "bastos", emoji: "🌿", claseCss: "palo-bastos" }
+        ];
+        const fuerzaPorNumero = { 3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 6, 9: 7, 10: 8, 11: 9, 12: 10, 1: 11, 2: 12 };
+        const nombresNumero = { 1: "As", 2: "Dos", 3: "Tres", 4: "Cuatro", 5: "Cinco", 6: "Seis", 7: "Siete", 8: "Ocho", 9: "Nueve", 10: "Sota", 11: "Caballo", 12: "Rey" };
+        const rolesPorCantidad = {
+            3: ["Presidente", "Neutral", "Culo"],
+            4: ["Presidente", "Vicepresidente", "Vice-Culo", "Culo"],
+            5: ["Presidente", "Vicepresidente", "Neutral", "Vice-Culo", "Culo"],
+            6: ["Presidente", "Vicepresidente", "Neutral", "Neutral", "Vice-Culo", "Culo"]
+        };
+        const coloresPorAsiento = ["#f87171", "#60a5fa", "#fbbf24", "#c084fc", "#34d399", "#fb923c"];
+        const estadoJuego = {
+            sala: "local", modo: "cpu", turnoActivo: 0, ultimaJugadaMesa: null, ultimoEnTirarIndex: null,
+            revolucionActiva: false, modificadorSota: false, cierreSietesActivo: false, cantidadSietesMesa: 0,
+            jugadoresPasados: new Set(), jugadores: [], cantidadJugadores: 4,
+            ordenDescarteHistorico: [], primeraRonda: true, temporizadorCpu: null, rondaFinalizada: false,
+            faseIntercambioFuria: null, solicitudIntercambioFuria: null, intercambioCuloEnCurso: null,
+            intercambioViceCuloEnCurso: null, resumenIntercambioCulo: null, resumenIntercambioViceCulo: null,
+            resolucionBazaPendiente: null, eventoPartida: null
+        };
+        let manoLocalSeleccionada = [];
+        let seleccionIntercambio = new Set();
+        let intercambioPendiente = null;
+        let temporizadorComentario = null;
+        let temporizadorAvisoSota = null;
+        let temporizadorAvisoGrupoSotas = null;
+        let temporizadorAvisoEvento = null;
+        let temporizadorResolucionBaza = null;
+        let ultimoEventoPartidaMostrado = null;
+        let socketPartida = null;
+        let asientoOnline = null;
+        let anfitrionOnline = false;
+        let recuperandoAnfitrion = false;
+        let reintentoConexionOnline = null;
+        let solicitudConexionOnline = null;
+        let salirOnlineSolicitado = false;
+        let solicitudTrasCerrarOnline = null;
+        let salaOnlineAsignada = false;
+        let animarAlRestaurar = false;
+        let temporizadorReparto = null;
+        let ultimoResumenIntercambioMostrado = null;
+        const elemento = (id) => document.getElementById(id);
+        function crearConteoRoles() {
+            return { "Presidente": 0, "Vicepresidente": 0, "Neutral": 0, "Vice-Culo": 0, "Culo": 0 };
+        }
+        function resumirConteoRoles(jugador) {
+            const conteo = jugador.conteoRoles;
+            const resumen = [
+                ["P", "Presidente"],
+                ["VP", "Vicepresidente"],
+                ["N", "Neutral"],
+                ["VC", "Vice-Culo"],
+                ["C", "Culo"]
+            ];
+            return resumen
+                .filter(([, rol]) => !(estadoJuego.jugadores.length === 4 && rol === "Neutral"))
+                .map(([abreviatura, rol]) => abreviatura + " " + conteo[rol])
+                .join(" · ");
+        }
+        function indiceHumano() {
+            return estadoJuego.modo === "online" && asientoOnline !== null ? asientoOnline : estadoJuego.jugadores.length - 1;
+        }
+        function crearJugadores(cantidad, nombreHumano) {
+            return Array.from({ length: cantidad }, (_, id) => ({
+                id,
+                nombre: id === cantidad - 1 ? nombreHumano : "CPU " + (id + 1),
+                mano: [],
+                rol: "Neutral",
+                conteoRoles: crearConteoRoles()
+            }));
+        }
+        function renderizarZonasRivales() {
+            const contenedor = elemento("zonas-rivales");
+            contenedor.replaceChildren();
+            estadoJuego.jugadores.filter((jugador) => jugador.id !== indiceHumano()).forEach((jugador) => {
+                const zona = document.createElement("div");
+                zona.id = "jugador-zona-" + jugador.id;
+                zona.className = "zona-jugador";
+                zona.style.setProperty("--player-color", coloresPorAsiento[jugador.id % coloresPorAsiento.length]);
+                zona.innerHTML = '<strong id="nombre-' + jugador.id + '"></strong><div id="cartas-count-' + jugador.id + '">Cartas: 0</div><span id="rol-' + jugador.id + '" class="rol-tag">Neutral</span><span id="conteo-roles-' + jugador.id + '" class="contador-roles"></span>';
+                contenedor.appendChild(zona);
+            });
+            elemento("zona-humano").style.setProperty("--player-color", coloresPorAsiento[indiceHumano() % coloresPorAsiento.length]);
+        }
+
+        function mostrarPanel(panelActivo) {
+            elemento("panel-inicial").hidden = panelActivo !== "inicial";
+            elemento("panel-multijugador").hidden = panelActivo !== "multi";
+        }
+        function mostrarOpcionesMulti() {
+            elemento("opciones-multi-base").hidden = false;
+            elemento("form-montar-mesa").hidden = true;
+            elemento("form-unirse-mesa").hidden = true;
+            elemento("error-montar").textContent = "";
+            elemento("error-unirse").textContent = "";
+            elemento("btn-anadir-cademir").hidden = true;
+        }
+        function volverDesdeSubmenuMulti() {
+            if (salaOnlineAsignada) cerrarSesionOnline();
+            mostrarOpcionesMulti();
+        }
+        function volverDesdeMenuMulti() {
+            if (salaOnlineAsignada) cerrarSesionOnline();
+            mostrarPanel("inicial");
+        }
+        function mostrarComentario(texto) {
+            if (estadoJuego.modo !== "cpu") return;
+            elemento("nube-texto-humano").textContent = texto;
+            elemento("nube-comentario-humano").hidden = false;
+            window.clearTimeout(temporizadorComentario);
+            temporizadorComentario = window.setTimeout(() => {
+                elemento("nube-comentario-humano").hidden = true;
+                temporizadorComentario = null;
+            }, 3200);
+        }
+        function mostrarAvisoGrupoSotas(cantidad) {
+            const aviso = elemento("aviso-grupo-sotas");
+            aviso.textContent = cantidad === 2
+                ? "¡PAREJA DE CARTA DEL PUEBLO!!"
+                : "¡TRIPLE CARTA DEL PUEBLO!!!";
+            aviso.hidden = false;
+            aviso.classList.remove("animando");
+            void aviso.offsetWidth;
+            aviso.classList.add("animando");
+            window.clearTimeout(temporizadorAvisoGrupoSotas);
+            temporizadorAvisoGrupoSotas = window.setTimeout(() => {
+                aviso.hidden = true;
+                aviso.classList.remove("animando");
+                temporizadorAvisoGrupoSotas = null;
+            }, 3200);
+        }
+        function mostrarAvisoEvento(texto, duracion = 1800) {
+            const aviso = elemento("aviso-evento");
+            aviso.textContent = texto;
+            aviso.classList.toggle("doble-salto", texto === "¡DOBLE SALTO!");
+            aviso.hidden = false;
+            window.clearTimeout(temporizadorAvisoEvento);
+            temporizadorAvisoEvento = window.setTimeout(() => {
+                aviso.hidden = true;
+                aviso.classList.remove("doble-salto");
+                temporizadorAvisoEvento = null;
+            }, duracion);
+        }
+        function anunciarEventoPartida(texto, duracion = 1800) {
+            const id = Date.now() + "-" + Math.random();
+            estadoJuego.eventoPartida = { id, texto, duracion };
+            ultimoEventoPartidaMostrado = id;
+            mostrarAvisoEvento(texto, duracion);
+        }
+        function mostrarEventoPartidaPendiente() {
+            const evento = estadoJuego.eventoPartida;
+            if (!evento || evento.id === ultimoEventoPartidaMostrado) return;
+            ultimoEventoPartidaMostrado = evento.id;
+            mostrarAvisoEvento(evento.texto, evento.duracion);
+        }
+        function mostrarResumenIntercambio(resumen) {
+            if (!resumen || resumen.seat !== indiceHumano() ||
+                resumen.id === ultimoResumenIntercambioMostrado) return;
+            ultimoResumenIntercambioMostrado = resumen.id;
+            const entregadas = elemento("cartas-entregadas");
+            const recibidas = elemento("cartas-recibidas");
+            entregadas.replaceChildren();
+            recibidas.replaceChildren();
+            resumen.enviadas.forEach((carta) => entregadas.appendChild(renderizarCarta(carta, false, false, -1)));
+            resumen.recibidas.forEach((carta) => recibidas.appendChild(renderizarCarta(carta, false, false, -1)));
+            elemento("titulo-resumen-intercambio").textContent = "Intercambio del " + resumen.rol;
+            elemento("etiqueta-entregadas").textContent = (resumen.enviadas.length === 1 ? "La carta" : "Las cartas") + " que entregaste";
+            elemento("etiqueta-recibidas").textContent = (resumen.recibidas.length === 1 ? "La carta" : "Las cartas") + " que recibiste";
+            elemento("modal-resumen-intercambio").hidden = false;
+        }
+        function describirJugada(cartas) {
+            if (cartas.length === 1) {
+                const carta = cartas[0];
+                const nombre = carta.numero === 2 && carta.palo === "oros" ? "el 2" : "un " + rotuloCarta(carta);
+                return nombre + " de " + carta.palo;
+            }
+            const rango = String(cartas[0].numero);
+            if (cartas.length === 2) return "pareja de " + rango + "s";
+            if (cartas.length === 3) return "trío de " + rango + "s";
+            return "cuatro " + rango + "s";
+        }
+        function textoAnuncioGanador(ganadorId, cartas) {
+            return "Ganador de la baza: " + estadoJuego.jugadores[ganadorId].nombre + " con " + describirJugada(cartas);
+        }
+        function programarAnuncioResolucionBaza(retrasoAnuncio = 0) {
+            window.clearTimeout(temporizadorResolucionBaza);
+            const mostrarGanador = () => {
+                const pendiente = estadoJuego.resolucionBazaPendiente;
+                if (!pendiente) return;
+                anunciarEventoPartida(textoAnuncioGanador(pendiente.ganadorId, pendiente.cartas), 2300);
+                publicarEstadoPartida();
+                temporizadorResolucionBaza = window.setTimeout(completarResolucionBaza, 2300);
+            };
+            temporizadorResolucionBaza = window.setTimeout(mostrarGanador, retrasoAnuncio);
+        }
+        function iniciarResolucionBaza(ganadorId, cartas, cierreSietes = false, retrasoAnuncio = 0) {
+            if (estadoJuego.resolucionBazaPendiente) return;
+            estadoJuego.resolucionBazaPendiente = {
+                ganadorId,
+                cartas: cartas.map((carta) => ({ ...carta })),
+                cierreSietes
+            };
+            programarAnuncioResolucionBaza(retrasoAnuncio);
+            actualizarInterfazGraficaMesa();
+            renderizarCartasMesa();
+        }
+        function completarResolucionBaza() {
+            const pendiente = estadoJuego.resolucionBazaPendiente;
+            if (!pendiente) return;
+            estadoJuego.resolucionBazaPendiente = null;
+            temporizadorResolucionBaza = null;
+            if (pendiente.cierreSietes) {
+                estadoJuego.cierreSietesActivo = false;
+                estadoJuego.cantidadSietesMesa = 0;
+            }
+            estadoJuego.ultimaJugadaMesa = null;
+            estadoJuego.modificadorSota = false;
+            estadoJuego.jugadoresPasados.clear();
+            estadoJuego.turnoActivo = estadoJuego.jugadores[pendiente.ganadorId].mano.length > 0
+                ? pendiente.ganadorId
+                : buscarSiguienteJugadorActivo(pendiente.ganadorId);
+            estadoJuego.ultimoEnTirarIndex = estadoJuego.turnoActivo;
+            actualizarInterfazGraficaMesa();
+            renderizarCartasMesa();
+            ejecutarCicloDeTurnoBucle();
+        }
+        function registrarJugadorPasa(jugadorId) {
+            estadoJuego.jugadoresPasados.add(jugadorId);
+            anunciarEventoPartida(estadoJuego.jugadores[jugadorId].nombre + " PASA", 1500);
+        }
+        function alternarComentariosRapidos() {
+            const lista = elemento("lista-comentarios");
+            lista.hidden = !lista.hidden;
+            elemento("btn-comentarios").setAttribute("aria-expanded", String(!lista.hidden));
+        }
+        function enviarComentarioRapido(evento) {
+            const boton = evento.target.closest("button[data-comentario]");
+            if (!boton) return;
+            mostrarComentario(boton.dataset.comentario);
+            elemento("lista-comentarios").hidden = true;
+            elemento("btn-comentarios").setAttribute("aria-expanded", "false");
+        }
+        function mostrarAvisoSotaPueblo() {
+            const aviso = elemento("aviso-sota-pueblo");
+            aviso.hidden = false;
+            aviso.classList.remove("animando");
+            void aviso.offsetWidth;
+            aviso.classList.add("animando");
+            window.clearTimeout(temporizadorAvisoSota);
+            temporizadorAvisoSota = window.setTimeout(() => {
+                aviso.hidden = true;
+                aviso.classList.remove("animando");
+                temporizadorAvisoSota = null;
+            }, 3200);
+        }
+        const CLAVE_SESION_ONLINE = "el-presidente-online-v1";
+        function leerSesionOnlineGuardada() {
+            const guardada = localStorage.getItem(CLAVE_SESION_ONLINE);
+            if (!guardada) return null;
+            try {
+                const sesion = JSON.parse(guardada);
+                if (sesion && /^TOLAS\d{4}$/.test(sesion.room) && typeof sesion.token === "string" &&
+                    typeof sesion.name === "string") return sesion;
+            } catch (error) {
+                console.error("No se pudo leer la sesión online guardada.", error);
+            }
+            localStorage.removeItem(CLAVE_SESION_ONLINE);
+            return null;
+        }
+        function actualizarBotonReanudarOnline() {
+            elemento("btn-reanudar-online").hidden = !leerSesionOnlineGuardada();
+        }
+        function mostrarEstadoOnline(mensaje, esError = false) {
+            const estado = elemento("estado-sala-online");
+            estado.textContent = mensaje;
+            estado.style.color = esError ? "#fecaca" : "#eaffb0";
+        }
+        function cerrarSesionOnline(solicitudSiguiente = null) {
+            window.clearTimeout(reintentoConexionOnline);
+            reintentoConexionOnline = null;
+            solicitudTrasCerrarOnline = solicitudSiguiente;
+            salirOnlineSolicitado = true;
+            salaOnlineAsignada = false;
+            solicitudConexionOnline = null;
+            localStorage.removeItem(CLAVE_SESION_ONLINE);
+            actualizarBotonReanudarOnline();
+            if (!socketPartida || socketPartida.readyState === WebSocket.CLOSED) {
+                socketPartida = null;
+                salirOnlineSolicitado = false;
+                if (solicitudTrasCerrarOnline) {
+                    const siguiente = solicitudTrasCerrarOnline;
+                    solicitudTrasCerrarOnline = null;
+                    conectarServidorPartida(siguiente);
+                }
+                return;
+            }
+            if (socketPartida.readyState === WebSocket.OPEN) {
+                socketPartida.send(JSON.stringify({ type: "leave" }));
+            }
+            socketPartida.close();
+        }
+        function añadirCademir() {
+            if (!salaOnlineAsignada || !anfitrionOnline ||
+                !socketPartida || socketPartida.readyState !== WebSocket.OPEN) {
+                mostrarEstadoOnline("Solo el anfitrión conectado puede añadir a Cademir.", true);
+                return;
+            }
+            elemento("btn-anadir-cademir").disabled = true;
+            socketPartida.send(JSON.stringify({ type: "add-cpu" }));
+        }
+        function conectarServidorPartida(solicitud) {
+            if (window.location.protocol !== "http:" && window.location.protocol !== "https:") {
+                mostrarEstadoOnline("Para jugar online, abre la página desde el servidor (http:// o https://), no como archivo local.", true);
+                return;
+            }
+            window.clearTimeout(reintentoConexionOnline);
+            solicitudConexionOnline = solicitud;
+            salirOnlineSolicitado = false;
+            if (socketPartida && socketPartida.readyState === WebSocket.OPEN) {
+                socketPartida.send(JSON.stringify(solicitud));
+                return;
+            }
+            if (socketPartida && socketPartida.readyState === WebSocket.CONNECTING) return;
+            const protocolo = window.location.protocol === "https:" ? "wss:" : "ws:";
+            socketPartida = new WebSocket(protocolo + "//" + window.location.host + "/ws");
+            mostrarEstadoOnline("Conectando con el servidor...");
+            socketPartida.addEventListener("open", () => {
+                if (solicitudConexionOnline) socketPartida.send(JSON.stringify(solicitudConexionOnline));
+            });
+            socketPartida.addEventListener("message", (evento) => {
+                let mensaje;
+                try {
+                    mensaje = JSON.parse(evento.data);
+                } catch (error) {
+                    console.error("El servidor envió un mensaje inválido.", error);
+                    mostrarEstadoOnline("El servidor devolvió una respuesta no válida.", true);
+                    return;
+                }
+                recibirMensajeServidor(mensaje);
+            });
+            socketPartida.addEventListener("close", () => {
+                socketPartida = null;
+                if (salirOnlineSolicitado) {
+                    salirOnlineSolicitado = false;
+                    const siguiente = solicitudTrasCerrarOnline;
+                    solicitudTrasCerrarOnline = null;
+                    if (siguiente) conectarServidorPartida(siguiente);
+                    return;
+                }
+                salaOnlineAsignada = false;
+                mostrarEstadoOnline("Conexión perdida. Intentando reconectar...");
+                const sesion = leerSesionOnlineGuardada();
+                if (sesion) {
+                    solicitudConexionOnline = { type: "join", room: sesion.room, name: sesion.name, token: sesion.token };
+                    reintentoConexionOnline = window.setTimeout(() => conectarServidorPartida(solicitudConexionOnline), 1500);
+                }
+            });
+            socketPartida.addEventListener("error", () => {
+                mostrarEstadoOnline("No se pudo conectar con el servidor. Comprueba que el Web Service está activo.", true);
+            });
+        }
+        function recibirMensajeServidor(mensaje) {
+            if (mensaje.type === "error") {
+                mostrarEstadoOnline(mensaje.message || "Error de conexión.", true);
+                elemento("error-montar").textContent = mensaje.message || "";
+                elemento("error-unirse").textContent = mensaje.message || "";
+                elemento("btn-montar").disabled = false;
+                elemento("btn-unirse").disabled = false;
+                elemento("btn-anadir-cademir").disabled = false;
+                return;
+            }
+            if (mensaje.type === "assigned") {
+                salaOnlineAsignada = true;
+                estadoJuego.modo = "online";
+                estadoJuego.sala = mensaje.room;
+                estadoJuego.cantidadJugadores = mensaje.maxPlayers;
+                asientoOnline = mensaje.seat;
+                anfitrionOnline = mensaje.isHost;
+                recuperandoAnfitrion = mensaje.isHost && mensaje.phase === "running";
+                const sesion = { room: mensaje.room, seat: mensaje.seat, token: mensaje.token, name: solicitudConexionOnline.name };
+                localStorage.setItem(CLAVE_SESION_ONLINE, JSON.stringify(sesion));
+                solicitudConexionOnline = { type: "join", room: sesion.room, name: sesion.name, token: sesion.token };
+                elemento("codigo-generado-input").value = mensaje.room;
+                actualizarBotonReanudarOnline();
+                mostrarEstadoOnline("Sala " + mensaje.room + " · conectado como " + sesion.name + ".");
+                elemento("btn-montar").disabled = false;
+                elemento("btn-unirse").disabled = false;
+                elemento("btn-anadir-cademir").hidden = !mensaje.isHost || mensaje.phase !== "lobby";
+                elemento("btn-anadir-cademir").disabled = false;
+                return;
+            }
+            if (mensaje.type === "lobby") {
+                const nombres = mensaje.players.map((jugador) => jugador.name + (jugador.connected ? "" : " (desconectado)"));
+                mostrarEstadoOnline("Sala " + mensaje.room + " · " + nombres.length + "/" + mensaje.maxPlayers + " jugadores: " + nombres.join(", ") + (nombres.length < mensaje.maxPlayers ? " · esperando jugadores..." : ""));
+                elemento("btn-anadir-cademir").hidden = !anfitrionOnline;
+                elemento("btn-anadir-cademir").disabled = mensaje.players.some((jugador) => jugador.cpu);
+                return;
+            }
+            if (mensaje.type === "left") {
+                salaOnlineAsignada = false;
+                localStorage.removeItem(CLAVE_SESION_ONLINE);
+                actualizarBotonReanudarOnline();
+                mostrarEstadoOnline("Has salido de la sala.");
+                return;
+            }
+            if (mensaje.type === "room-closed") {
+                salaOnlineAsignada = false;
+                localStorage.removeItem(CLAVE_SESION_ONLINE);
+                actualizarBotonReanudarOnline();
+                mostrarEstadoOnline("El anfitrión ha cerrado la sala.", true);
+                return;
+            }
+            if (mensaje.type === "start") {
+                estadoJuego.modo = "online";
+                estadoJuego.sala = mensaje.room;
+                estadoJuego.cantidadJugadores = mensaje.maxPlayers;
+                if (anfitrionOnline) {
+                    const miJugador = mensaje.players.find((jugador) => jugador.seat === asientoOnline);
+                    comenzarPartida(miJugador.name, mensaje.players);
+                } else {
+                    animarAlRestaurar = true;
+                    mostrarEstadoOnline("Partida iniciada. Sincronizando cartas...");
+                }
+                return;
+            }
+            if (mensaje.type === "state") {
+                if (mensaje.state && (!anfitrionOnline || recuperandoAnfitrion)) {
+                    restaurarEstadoServidor(mensaje.state);
+                    recuperandoAnfitrion = false;
+                }
+                return;
+            }
+            if (mensaje.type === "action") {
+                if (anfitrionOnline) procesarAccionRemota(mensaje);
+                return;
+            }
+            if (mensaje.type === "exchange-response") {
+                if (anfitrionOnline) procesarRespuestaIntercambioRemota(mensaje);
+                return;
+            }
+            if (mensaje.type === "player-status" && estadoJuego.modo === "online" &&
+                document.body.classList.contains("en-partida")) {
+                const jugador = estadoJuego.jugadores[mensaje.seat];
+                if (jugador) {
+                    jugador.conectado = mensaje.connected;
+                    actualizarInterfazGraficaMesa();
+                }
+                if (!mensaje.hostConnected) mostrarEstadoOnline("El anfitrión se ha desconectado. La partida se reanudará cuando vuelva.");
+            }
+        }
+        function serializarEstadoPartida() {
+            const estado = { ...estadoJuego, jugadoresPasados: [...estadoJuego.jugadoresPasados], temporizadorCpu: null };
+            return JSON.parse(JSON.stringify(estado));
+        }
+        function publicarEstadoPartida() {
+            if (estadoJuego.modo !== "online" || !anfitrionOnline ||
+                !socketPartida || socketPartida.readyState !== WebSocket.OPEN) return;
+            socketPartida.send(JSON.stringify({ type: "state", state: serializarEstadoPartida() }));
+        }
+        function restaurarEstadoServidor(estado) {
+            const intercambioAcabaDeCompletar = Boolean(estadoJuego.faseIntercambioFuria) && !estado.faseIntercambioFuria;
+            const puestosAnteriores = estadoJuego.ordenDescarteHistorico.slice();
+            const rolesAnteriores = new Map(estadoJuego.jugadores.map((jugador) => [jugador.id, jugador.rol]));
+            const nuevosPuestos = Array.isArray(estado.ordenDescarteHistorico)
+                ? estado.ordenDescarteHistorico.slice(puestosAnteriores.length)
+                : [];
+            Object.assign(estadoJuego, estado);
+            estadoJuego.jugadoresPasados = new Set(estado.jugadoresPasados || []);
+            estadoJuego.temporizadorCpu = null;
+            estadoJuego.modo = "online";
+            estadoJuego.sala = solicitudConexionOnline ? solicitudConexionOnline.room : estadoJuego.sala;
+            estadoJuego.cantidadJugadores = estado.jugadores.length;
+            estadoJuego.rondaFinalizada = Boolean(estado.rondaFinalizada);
+            window.clearTimeout(estadoJuego.temporizadorCpu);
+            manoLocalSeleccionada = [];
+            renderizarZonasRivales();
+            nuevosPuestos.forEach((jugadorId, indiceNuevo) => {
+                const posicion = puestosAnteriores.length + indiceNuevo;
+                const rolNuevo = rolesPorCantidad[estadoJuego.jugadores.length][posicion];
+                mostrarAnuncioPuesto(jugadorId, rolNuevo, rolesAnteriores.get(jugadorId));
+            });
+            elemento("hud-sala").textContent = "Sala: " + estadoJuego.sala;
+            elemento("hud-sala").hidden = false;
+            elemento("btn-salir-partida").hidden = false;
+            elemento("btn-salir-partida").textContent = "Salir de la sala";
+            elemento("chat-rapido").hidden = true;
+            document.body.classList.add("en-partida");
+            actualizarInterfazGraficaMesa();
+            renderizarCartasMesa();
+            reanudarSolicitudIntercambioFuria();
+            if (estadoJuego.resumenIntercambioCulo) mostrarResumenIntercambio(estadoJuego.resumenIntercambioCulo);
+            if (estadoJuego.resumenIntercambioViceCulo) mostrarResumenIntercambio(estadoJuego.resumenIntercambioViceCulo);
+            if (animarAlRestaurar || intercambioAcabaDeCompletar) {
+                animarAlRestaurar = false;
+                animarRepartoDeCartas();
+            }
+            if (estadoJuego.resolucionBazaPendiente) {
+                programarAnuncioResolucionBaza();
+            } else ejecutarCicloDeTurnoBucle();
+            mostrarEstadoOnline("Partida " + estadoJuego.sala + " reconectada.");
+        }
+        function procesarAccionRemota(mensaje) {
+            const jugadorId = mensaje.seat;
+            if (estadoJuego.resolucionBazaPendiente) return;
+            if (estadoJuego.faseIntercambioFuria) return;
+            if (estadoJuego.turnoActivo !== jugadorId || estadoJuego.jugadoresPasados.has(jugadorId)) return;
+            if (mensaje.action === "pass") {
+                if (!estadoJuego.ultimaJugadaMesa || jugadorDebeResponderConSietes(jugadorId)) return;
+                registrarJugadorPasa(jugadorId);
+                pasarSiguienteTurnoControl();
+                return;
+            }
+            if (mensaje.action === "play" && Array.isArray(mensaje.cardUids)) {
+                ejecutarJugadaDeJugador(jugadorId, mensaje.cardUids);
+            }
+        }
+        function enviarAccionOnline(accion, cardUids = []) {
+            if (!socketPartida || socketPartida.readyState !== WebSocket.OPEN) {
+                mostrarEstadoOnline("Sin conexión: la jugada no se ha enviado.", true);
+                return false;
+            }
+            socketPartida.send(JSON.stringify({ type: "action", action: accion, cardUids }));
+            return true;
+        }
+        function reanudarPartidaOnline() {
+            const sesion = leerSesionOnlineGuardada();
+            if (!sesion) {
+                mostrarEstadoOnline("No hay ninguna sesión online guardada.", true);
+                actualizarBotonReanudarOnline();
+                return;
+            }
+            conectarServidorPartida({ type: "join", room: sesion.room, name: sesion.name, token: sesion.token });
+        }
+        function generarCodigoSala() { return "TOLAS" + String(Math.floor(1000 + Math.random() * 9000)); }
+        function iniciarModoCpu() {
+            estadoJuego.modo = "cpu";
+            estadoJuego.sala = "local";
+            comenzarPartida("Jugador");
+        }
+        function montarMesa(evento) {
+            evento.preventDefault();
+            const nombre = elemento("nombre-creador").value.trim();
+            if (!nombre) { elemento("error-montar").textContent = "Escribe un nombre para continuar."; return; }
+            estadoJuego.modo = "online";
+            elemento("codigo-generado-input").value = "Conectando...";
+            elemento("btn-montar").disabled = true;
+            const solicitud = {
+                type: "create",
+                name: nombre,
+                maxPlayers: Number(elemento("cantidad-jugadores").value)
+            };
+            if (salaOnlineAsignada) cerrarSesionOnline(solicitud);
+            else conectarServidorPartida(solicitud);
+        }
+        function unirseAMesa(evento) {
+            evento.preventDefault();
+            const nombre = elemento("nombre-invitado").value.trim();
+            const codigo = elemento("codigo-unirse-input").value.trim().toUpperCase();
+            if (!nombre) { elemento("error-unirse").textContent = "Escribe tu nombre de jugador."; return; }
+            if (!/^TOLAS\d{4}$/.test(codigo)) { elemento("error-unirse").textContent = "El código debe tener el formato TOLAS seguido de 4 números."; return; }
+            estadoJuego.modo = "online";
+            estadoJuego.sala = codigo;
+            const sesionGuardada = leerSesionOnlineGuardada();
+            const solicitud = { type: "join", room: codigo, name: nombre };
+            if (sesionGuardada && sesionGuardada.room === codigo) solicitud.token = sesionGuardada.token;
+            elemento("btn-unirse").disabled = true;
+            if (salaOnlineAsignada) cerrarSesionOnline(solicitud);
+            else conectarServidorPartida(solicitud);
+        }
+        function comenzarPartida(nombre, jugadoresOnline = null) {
+            estadoJuego.faseIntercambioFuria = null;
+            estadoJuego.solicitudIntercambioFuria = null;
+            estadoJuego.intercambioCuloEnCurso = null;
+            estadoJuego.intercambioViceCuloEnCurso = null;
+            estadoJuego.resumenIntercambioCulo = null;
+            estadoJuego.resumenIntercambioViceCulo = null;
+            intercambioPendiente = null;
+            estadoJuego.cantidadJugadores = jugadoresOnline ? jugadoresOnline.length : Number(elemento("cantidad-jugadores").value);
+            estadoJuego.jugadores = jugadoresOnline
+                ? jugadoresOnline.map((jugador) => ({
+                    id: jugador.seat,
+                    nombre: jugador.name,
+                    mano: [],
+                    rol: "Neutral",
+                    conteoRoles: crearConteoRoles(),
+                    conectado: jugador.connected,
+                    cpu: Boolean(jugador.cpu)
+                }))
+                : crearJugadores(estadoJuego.cantidadJugadores, nombre);
+            renderizarZonasRivales();
+            elemento("nombre-humano").textContent = nombre;
+            elemento("hud-sala").textContent = estadoJuego.modo === "online" ? "Sala: " + estadoJuego.sala : "";
+            elemento("hud-sala").hidden = estadoJuego.modo !== "online";
+            elemento("btn-salir-partida").hidden = false;
+            elemento("btn-salir-partida").textContent = estadoJuego.modo === "online" ? "Salir de la sala" : "Salir de la partida";
+            elemento("chat-rapido").hidden = estadoJuego.modo !== "cpu";
+            elemento("estado-sala-online").textContent = estadoJuego.modo === "online" ? "Sala " + estadoJuego.sala + " · " + estadoJuego.cantidadJugadores + " jugadores conectados." : "";
+            elemento("lista-comentarios").hidden = true;
+            elemento("btn-comentarios").setAttribute("aria-expanded", "false");
+            elemento("nube-comentario-humano").hidden = true;
+            elemento("aviso-sota-pueblo").hidden = true;
+            elemento("aviso-sota-pueblo").classList.remove("animando");
+            window.clearTimeout(temporizadorAvisoSota);
+            temporizadorAvisoSota = null;
+            elemento("aviso-grupo-sotas").hidden = true;
+            elemento("aviso-grupo-sotas").classList.remove("animando");
+            window.clearTimeout(temporizadorAvisoGrupoSotas);
+            temporizadorAvisoGrupoSotas = null;
+            window.clearTimeout(temporizadorAvisoEvento);
+            temporizadorAvisoEvento = null;
+            elemento("aviso-evento").hidden = true;
+            elemento("aviso-evento").classList.remove("doble-salto");
+            estadoJuego.eventoPartida = null;
+            ultimoEventoPartidaMostrado = null;
+            document.body.classList.add("en-partida");
+            iniciarNuevaRondaDeJuego();
+        }
+        function salirDePartida() {
+            if (estadoJuego.modo === "online") cerrarSesionOnline();
+            window.clearTimeout(estadoJuego.temporizadorCpu);
+            estadoJuego.temporizadorCpu = null;
+            estadoJuego.jugadores = [];
+            estadoJuego.jugadoresPasados.clear();
+            estadoJuego.primeraRonda = true;
+            estadoJuego.rondaFinalizada = false;
+            estadoJuego.ordenDescarteHistorico = [];
+            estadoJuego.faseIntercambioFuria = null;
+            estadoJuego.solicitudIntercambioFuria = null;
+            estadoJuego.intercambioCuloEnCurso = null;
+            estadoJuego.intercambioViceCuloEnCurso = null;
+            estadoJuego.resumenIntercambioCulo = null;
+            estadoJuego.resumenIntercambioViceCulo = null;
+            manoLocalSeleccionada = [];
+            seleccionIntercambio.clear();
+            intercambioPendiente = null;
+
+            window.clearTimeout(temporizadorComentario);
+            temporizadorComentario = null;
+            window.clearTimeout(temporizadorAvisoSota);
+            temporizadorAvisoSota = null;
+            window.clearTimeout(temporizadorAvisoGrupoSotas);
+            temporizadorAvisoGrupoSotas = null;
+            window.clearTimeout(temporizadorResolucionBaza);
+            temporizadorResolucionBaza = null;
+            window.clearTimeout(temporizadorReparto);
+            temporizadorReparto = null;
+            estadoJuego.resolucionBazaPendiente = null;
+            estadoJuego.eventoPartida = null;
+            ultimoEventoPartidaMostrado = null;
+            window.clearTimeout(temporizadorAvisoEvento);
+            temporizadorAvisoEvento = null;
+            elemento("aviso-evento").hidden = true;
+            elemento("aviso-evento").classList.remove("doble-salto");
+            elemento("aviso-sota-pueblo").hidden = true;
+            elemento("aviso-sota-pueblo").classList.remove("animando");
+            elemento("aviso-grupo-sotas").hidden = true;
+            elemento("aviso-grupo-sotas").classList.remove("animando");
+            elemento("lista-comentarios").hidden = true;
+            elemento("nube-comentario-humano").hidden = true;
+            elemento("chat-rapido").hidden = true;
+            elemento("modal-intercambio").hidden = true;
+            elemento("modal-resumen-intercambio").hidden = true;
+            elemento("btn-salir-partida").hidden = true;
+            elemento("animacion-reparto").replaceChildren();
+            elemento("animacion-reparto").hidden = true;
+            document.body.classList.remove("en-partida");
+            estadoJuego.modo = "cpu";
+            salaOnlineAsignada = false;
+            asientoOnline = null;
+            anfitrionOnline = false;
+            recuperandoAnfitrion = false;
+            animarAlRestaurar = false;
+            mostrarPanel("inicial");
+            mostrarOpcionesMulti();
+        }
+        function crearBarajaCompleta48() {
+            const baraja = [];
+            palosConfig.forEach((palo) => indicesTradicionales.forEach((numero) => baraja.push({ numero, palo: palo.id, emoji: palo.emoji, claseCss: palo.claseCss, fuerzaBase: fuerzaPorNumero[numero], uid: "carta-" + palo.id + "-" + numero })));
+            return baraja;
+        }
+        function barajarMazo(mazo) {
+            for (let indice = mazo.length - 1; indice > 0; indice -= 1) {
+                const aleatorio = Math.floor(Math.random() * (indice + 1));
+                [mazo[indice], mazo[aleatorio]] = [mazo[aleatorio], mazo[indice]];
+            }
+            return mazo;
+        }
+        function ordenarMano(jugador) {
+            jugador.mano.sort((a, b) => fuerzaPorNumero[a.numero] - fuerzaPorNumero[b.numero] || palosConfig.findIndex((palo) => palo.id === a.palo) - palosConfig.findIndex((palo) => palo.id === b.palo));
+        }
+        function compararValorIntercambio(a, b) {
+            const diferenciaFuerza = fuerzaPorNumero[a.numero] - fuerzaPorNumero[b.numero];
+            if (diferenciaFuerza) return diferenciaFuerza;
+            if (esDosDeOros(a)) return 1;
+            if (esDosDeOros(b)) return -1;
+            return palosConfig.findIndex((palo) => palo.id === a.palo) -
+                palosConfig.findIndex((palo) => palo.id === b.palo);
+        }
+        function obtenerCartasMasAltas(jugador, cantidad) {
+            return [...jugador.mano].sort(compararValorIntercambio).slice(-cantidad);
+        }
+        function repartirMazo() {
+            const mazo = barajarMazo(crearBarajaCompleta48());
+            estadoJuego.jugadores.forEach((jugador) => { jugador.mano = []; });
+            mazo.forEach((carta, indice) => estadoJuego.jugadores[indice % estadoJuego.jugadores.length].mano.push(carta));
+            estadoJuego.jugadores.forEach(ordenarMano);
+        }
+        function animarRepartoDeCartas() {
+            const capa = elemento("animacion-reparto");
+            window.clearTimeout(temporizadorReparto);
+            capa.replaceChildren();
+            if (!estadoJuego.jugadores.length || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+                capa.hidden = true;
+                return;
+            }
+            capa.hidden = false;
+            const centroX = window.innerWidth / 2 - 12;
+            const centroY = window.innerHeight / 2 - 17;
+            const objetivos = estadoJuego.jugadores.map((jugador) => {
+                const destino = jugador.id === indiceHumano()
+                    ? elemento("contenedor-mano-humano")
+                    : elemento("jugador-zona-" + jugador.id);
+                const rect = destino.getBoundingClientRect();
+                return {
+                    x: rect.left + rect.width / 2,
+                    y: rect.top + rect.height / 2
+                };
+            });
+            for (let indice = 0; indice < 48; indice += 1) {
+                const destino = objetivos[indice % objetivos.length];
+                const reparto = Math.floor(indice / objetivos.length);
+                const carta = document.createElement("span");
+                carta.className = "carta-reparto";
+                carta.style.left = centroX + "px";
+                carta.style.top = centroY + "px";
+                capa.appendChild(carta);
+                carta.animate([
+                    { transform: "translate(0, 0) scale(.82) rotate(0deg)", opacity: .95 },
+                    {
+                        transform: "translate(" + (destino.x - centroX - 12 + (reparto % 2 ? 4 : -4)) + "px, " +
+                            (destino.y - centroY - 17) + "px) scale(.38) rotate(" + (reparto % 2 ? 8 : -8) + "deg)",
+                        opacity: 0
+                    }
+                ], {
+                    duration: 360,
+                    delay: indice * 8,
+                    easing: "cubic-bezier(.22,.72,.25,1)",
+                    fill: "forwards"
+                });
+            }
+            temporizadorReparto = window.setTimeout(() => {
+                capa.replaceChildren();
+                capa.hidden = true;
+                temporizadorReparto = null;
+            }, 780);
+        }
+        function reiniciarBaza() {
+            window.clearTimeout(temporizadorResolucionBaza);
+            temporizadorResolucionBaza = null;
+            estadoJuego.resolucionBazaPendiente = null;
+            estadoJuego.eventoPartida = null;
+            ultimoEventoPartidaMostrado = null;
+            estadoJuego.ultimaJugadaMesa = null;
+            estadoJuego.ultimoEnTirarIndex = null;
+            estadoJuego.jugadoresPasados.clear();
+            estadoJuego.modificadorSota = false;
+            estadoJuego.revolucionActiva = false;
+            estadoJuego.cierreSietesActivo = false;
+            estadoJuego.cantidadSietesMesa = 0;
+            estadoJuego.rondaFinalizada = false;
+            manoLocalSeleccionada = [];
+        }
+        function iniciarNuevaRondaDeJuego() {
+            window.clearTimeout(estadoJuego.temporizadorCpu);
+            repartirMazo();
+            reiniciarBaza();
+            estadoJuego.ordenDescarteHistorico = [];
+            determinarTurnoInicial();
+            actualizarInterfazGraficaMesa();
+            renderizarCartasMesa();
+            animarRepartoDeCartas();
+            ejecutarCicloDeTurnoBucle();
+        }
+        function determinarTurnoInicial() {
+            if (!estadoJuego.primeraRonda) {
+                const culo = estadoJuego.jugadores.find((jugador) => jugador.rol === "Culo");
+                if (culo) { estadoJuego.turnoActivo = culo.id; estadoJuego.ultimoEnTirarIndex = culo.id; return; }
+            }
+            const jugadorConTresOros = estadoJuego.jugadores.find((jugador) => jugador.mano.some((carta) => carta.numero === 3 && carta.palo === "oros"));
+            estadoJuego.turnoActivo = jugadorConTresOros ? jugadorConTresOros.id : 0;
+        }
+        function obtenerFuerzaEfectiva(carta) { return estadoJuego.revolucionActiva ? 13 - carta.fuerzaBase : carta.fuerzaBase; }
+        function esDosDeOros(carta) { return carta.numero === 2 && carta.palo === "oros"; }
+        function soloLeQuedaDosDeOros(jugador) { return jugador.mano.length === 1 && esDosDeOros(jugador.mano[0]); }
+        function validarCombinacion(cartas) {
+            return cartas.length >= 1 && cartas.length <= 4 &&
+                cartas.every((carta) => carta.numero === cartas[0].numero) &&
+                (cartas.length === 1 || !cartas.some(esDosDeOros));
+        }
+        function tieneCombinacionDeSietes(jugador) {
+            return jugador.mano.some((carta) => carta.numero === 7);
+        }
+        function mesaJuegaSietes() {
+            return estadoJuego.cierreSietesActivo || !!(estadoJuego.ultimaJugadaMesa && estadoJuego.ultimaJugadaMesa.some((carta) => carta.numero === 7));
+        }
+        function debeAbrirConTresDeOros() {
+            return estadoJuego.primeraRonda && estadoJuego.ultimaJugadaMesa === null &&
+                estadoJuego.ultimoEnTirarIndex === null && estadoJuego.ordenDescarteHistorico.length === 0;
+        }
+        function jugadorDebeResponderConSietes(jugadorId) {
+            const jugador = estadoJuego.jugadores[jugadorId];
+            return !!jugador && jugador.mano.length > 0 && mesaJuegaSietes() && tieneCombinacionDeSietes(jugador);
+        }
+        function limpiarPasadosObligadosPorSietes() {
+            if (!mesaJuegaSietes()) return;
+            estadoJuego.jugadores.forEach((jugador) => {
+                if (jugadorDebeResponderConSietes(jugador.id)) estadoJuego.jugadoresPasados.delete(jugador.id);
+            });
+        }
+        function validarJugadaContraMesa(cartas) {
+            if (!validarCombinacion(cartas)) return false;
+            if (debeAbrirConTresDeOros() && !cartas.some((carta) => carta.numero === 3 && carta.palo === "oros")) return false;
+            if (mesaJuegaSietes()) {
+                const jugador = estadoJuego.jugadores[estadoJuego.turnoActivo];
+                const sietesRestantes = jugador ? jugador.mano.filter((carta) => carta.numero === 7).length : 0;
+                return sietesRestantes > 0 && cartas.length === sietesRestantes && cartas.every((carta) => carta.numero === 7);
+            }
+            if (cartas.length === 1 && esDosDeOros(cartas[0]) && soloLeQuedaDosDeOros(estadoJuego.jugadores[estadoJuego.turnoActivo])) return false;
+            if (cartas.length === 1 && esDosDeOros(cartas[0]) && !estadoJuego.revolucionActiva) return true;
+            if (!estadoJuego.ultimaJugadaMesa) return true;
+            if (cartas.length !== estadoJuego.ultimaJugadaMesa.length) return false;
+            const fuerzaNueva = obtenerFuerzaEfectiva(cartas[0]);
+            const fuerzaMesa = obtenerFuerzaEfectiva(estadoJuego.ultimaJugadaMesa[0]);
+            if (estadoJuego.modificadorSota) return estadoJuego.revolucionActiva ? fuerzaNueva >= fuerzaMesa : fuerzaNueva <= fuerzaMesa;
+            return fuerzaNueva >= fuerzaMesa;
+        }
+        function rotuloCarta(carta) {
+            return [10, 11, 12].includes(carta.numero) ? nombresNumero[carta.numero] : String(carta.numero);
+        }
+        function renderizarCarta(carta, seleccionable, seleccionada, indice) {
+            const nodo = document.createElement("div");
+            nodo.className = "carta " + carta.claseCss + (seleccionada ? " seleccionada" : "");
+            nodo.setAttribute("aria-label", nombresNumero[carta.numero] + " de " + carta.palo);
+            if (seleccionable) {
+                nodo.setAttribute("role", "button"); nodo.setAttribute("tabindex", "0"); nodo.setAttribute("aria-pressed", seleccionada ? "true" : "false");
+                nodo.addEventListener("click", () => alternarSeleccionCartaMano(indice));
+                nodo.addEventListener("keydown", (evento) => { if (evento.key === "Enter" || evento.key === " ") { evento.preventDefault(); alternarSeleccionCartaMano(indice); } });
+            }
+            const indiceCarta = document.createElement("div"); indiceCarta.className = "carta-indice"; indiceCarta.textContent = rotuloCarta(carta);
+            const icono = document.createElement("div"); icono.className = "carta-icono-central"; icono.textContent = carta.emoji;
+            const palo = document.createElement("div"); palo.className = "carta-palo-mini"; palo.textContent = carta.numero;
+            nodo.append(indiceCarta, icono, palo);
+            return nodo;
+        }
+        function actualizarInterfazGraficaMesa() {
+            estadoJuego.jugadores.forEach((jugador) => {
+                const id = jugador.id;
+                const esHumano = id === indiceHumano();
+                if (!esHumano) {
+                    elemento("nombre-" + id).textContent = jugador.nombre;
+                    elemento("cartas-count-" + id).textContent = "Cartas: " + jugador.mano.length;
+                    elemento("rol-" + id).textContent = jugador.rol;
+                    elemento("conteo-roles-" + id).textContent = resumirConteoRoles(jugador);
+                }
+                const zona = elemento(esHumano ? "zona-humano" : "jugador-zona-" + id);
+                zona.style.setProperty("--player-color", coloresPorAsiento[id % coloresPorAsiento.length]);
+                zona.classList.toggle("activo", estadoJuego.turnoActivo === id && jugador.mano.length > 0 && !estadoJuego.jugadoresPasados.has(id));
+                zona.classList.toggle("pasado", estadoJuego.jugadoresPasados.has(id));
+                zona.classList.toggle("fuera", jugador.mano.length === 0);
+                if (esHumano) {
+                    const control = elemento("control-inferior-contenedor");
+                    control.style.setProperty("--player-color", coloresPorAsiento[id % coloresPorAsiento.length]);
+                    control.classList.toggle("activo", estadoJuego.turnoActivo === id && jugador.mano.length > 0 && !estadoJuego.jugadoresPasados.has(id));
+                    control.classList.toggle("pasado", estadoJuego.jugadoresPasados.has(id));
+                }
+            });
+            const humano = estadoJuego.jugadores[indiceHumano()];
+            elemento("nombre-humano").textContent = humano.nombre;
+            elemento("rol-humano").textContent = humano.rol;
+            elemento("conteo-roles-humano").textContent = resumirConteoRoles(humano);
+            elemento("hud-regimen").textContent = estadoJuego.revolucionActiva ? "REVOLUCIÓN" : "Normal";
+            elemento("hud-regimen").style.color = estadoJuego.revolucionActiva ? "#fca5a5" : "#fbbf24";
+            const nombresPasados = estadoJuego.jugadores.filter((jugador) => estadoJuego.jugadoresPasados.has(jugador.id)).map((jugador) => jugador.nombre);
+            elemento("hud-pasados").textContent = "Pasados: " + (nombresPasados.length ? nombresPasados.join(", ") : "ninguno");
+            mostrarEventoPartidaPendiente();
+            elemento("hud-fase").textContent = estadoJuego.primeraRonda ? "Baza regular" : "Furia · baza regular";
+            const alertaSota = elemento("notificador-efectos");
+            alertaSota.textContent = estadoJuego.cierreSietesActivo ? "TODOS LOS 7S FUERA" : estadoJuego.revolucionActiva ? "SOTA: SIGUIENTE JUGADA MAYOR O IGUAL" : "SOTA: SIGUIENTE JUGADA MENOR O IGUAL";
+            alertaSota.style.display = estadoJuego.modificadorSota || estadoJuego.cierreSietesActivo ? "block" : "none";
+            const avisoTurno = elemento("hud-turno-alerta");
+            const humanoDebeJugarSietes = estadoJuego.turnoActivo === indiceHumano() && jugadorDebeResponderConSietes(indiceHumano());
+            const humanoDebeAbrirConTresDeOros = estadoJuego.turnoActivo === indiceHumano() && debeAbrirConTresDeOros();
+            avisoTurno.classList.toggle("obligado-sietes", humanoDebeJugarSietes);
+            avisoTurno.textContent = estadoJuego.resolucionBazaPendiente
+                ? "Resolviendo la baza..."
+                : estadoJuego.jugadores[estadoJuego.turnoActivo].mano.length === 0
+                ? "Ronda terminada"
+                : humanoDebeJugarSietes
+                    ? "¡Obligado a jugar tus 7!"
+                    : humanoDebeAbrirConTresDeOros
+                        ? "Debes empezar con el 3 de oros"
+                    : estadoJuego.turnoActivo === indiceHumano() ? "¡Tu turno!" : "Pensando rivales...";
+            renderizarManoHumana();
+            evaluarHabilitacionBotonesAccion();
+            publicarEstadoPartida();
+        }
+        function renderizarManoHumana() {
+            const contenedor = elemento("contenedor-mano-humano"); contenedor.replaceChildren();
+            estadoJuego.jugadores[indiceHumano()].mano.forEach((carta, indice) => contenedor.appendChild(renderizarCarta(carta, true, manoLocalSeleccionada.includes(indice), indice)));
+        }
+        function renderizarCartasMesa() {
+            const zonaMesa = elemento("zona-central-mesa"); zonaMesa.replaceChildren();
+            if (!estadoJuego.ultimaJugadaMesa || estadoJuego.ultimaJugadaMesa.length === 0) {
+                const vacia = document.createElement("div"); vacia.id = "mesa-vacia-texto"; vacia.textContent = "Mesa vacía. Comienza la baza."; zonaMesa.appendChild(vacia); return;
+            }
+            estadoJuego.ultimaJugadaMesa.forEach((carta) => zonaMesa.appendChild(renderizarCarta(carta, false, false, -1)));
+        }
+        function alternarSeleccionCartaMano(indice) {
+            if (estadoJuego.faseIntercambioFuria || estadoJuego.turnoActivo !== indiceHumano() || estadoJuego.jugadoresPasados.has(indiceHumano())) return;
+            const seleccion = manoLocalSeleccionada.indexOf(indice);
+            if (seleccion >= 0) manoLocalSeleccionada.splice(seleccion, 1); else manoLocalSeleccionada.push(indice);
+            actualizarInterfazGraficaMesa();
+        }
+        function evaluarHabilitacionBotonesAccion() {
+            const humanoId = indiceHumano();
+            const esTurnoHumano = !estadoJuego.resolucionBazaPendiente && !estadoJuego.faseIntercambioFuria && estadoJuego.turnoActivo === humanoId && !estadoJuego.jugadoresPasados.has(humanoId) && estadoJuego.jugadores[humanoId].mano.length > 0;
+            elemento("control-inferior-contenedor").classList.toggle("pasado", estadoJuego.jugadoresPasados.has(humanoId));
+            const obligadoASietes = jugadorDebeResponderConSietes(humanoId);
+            elemento("btn-pasar").disabled = !esTurnoHumano || !estadoJuego.ultimaJugadaMesa || obligadoASietes;
+            const cartasElegidas = manoLocalSeleccionada.map((indice) => estadoJuego.jugadores[humanoId].mano[indice]).filter(Boolean);
+            elemento("btn-jugar").disabled = !esTurnoHumano || !validarJugadaContraMesa(cartasElegidas);
+        }
+        function ejecutarAccionJugar() {
+            const humanoId = indiceHumano();
+            if (estadoJuego.resolucionBazaPendiente || estadoJuego.faseIntercambioFuria || estadoJuego.turnoActivo !== humanoId || estadoJuego.jugadoresPasados.has(humanoId)) return;
+            const indices = [...manoLocalSeleccionada].sort((a, b) => b - a);
+            const cartas = indices.map((indice) => estadoJuego.jugadores[humanoId].mano[indice]).filter(Boolean);
+            if (!validarJugadaContraMesa(cartas)) return;
+            if (estadoJuego.modo === "online" && !anfitrionOnline) {
+                enviarAccionOnline("play", cartas.map((carta) => carta.uid));
+                return;
+            }
+            ejecutarJugadaDeJugador(humanoId, cartas.map((carta) => carta.uid));
+        }
+        function ejecutarJugadaDeJugador(jugadorId, uidsCartas) {
+            if (estadoJuego.resolucionBazaPendiente || estadoJuego.faseIntercambioFuria) return;
+            const jugador = estadoJuego.jugadores[jugadorId];
+            if (!jugador || estadoJuego.turnoActivo !== jugadorId || estadoJuego.jugadoresPasados.has(jugadorId)) return;
+            const ids = new Set(uidsCartas);
+            if (ids.size !== uidsCartas.length) return;
+            const cartas = jugador.mano.filter((carta) => ids.has(carta.uid));
+            if (cartas.length !== uidsCartas.length || !validarJugadaContraMesa(cartas)) return;
+            const idsOrdenados = new Set(cartas.map((carta) => carta.uid));
+            jugador.mano = jugador.mano.filter((carta) => !idsOrdenados.has(carta.uid));
+            manoLocalSeleccionada = [];
+            procesarLanzamientoDeCartas(jugadorId, cartas);
+        }
+        function ejecutarAccionPasar() {
+            const humanoId = indiceHumano();
+            if (estadoJuego.resolucionBazaPendiente || estadoJuego.faseIntercambioFuria) return;
+            if (estadoJuego.turnoActivo !== humanoId || !estadoJuego.ultimaJugadaMesa || estadoJuego.jugadoresPasados.has(humanoId)) return;
+            if (jugadorDebeResponderConSietes(humanoId)) return;
+            manoLocalSeleccionada = [];
+            if (estadoJuego.modo === "online" && !anfitrionOnline) {
+                enviarAccionOnline("pass");
+                return;
+            }
+            registrarJugadorPasa(humanoId);
+            pasarSiguienteTurnoControl();
+        }
+        function registrarJugadorDescartado(jugadorId) {
+            const jugador = estadoJuego.jugadores[jugadorId];
+            if (jugador.mano.length !== 0 || estadoJuego.ordenDescarteHistorico.includes(jugadorId)) return;
+            const posicion = estadoJuego.ordenDescarteHistorico.length;
+            const rolNuevo = rolesPorCantidad[estadoJuego.jugadores.length][posicion];
+            estadoJuego.ordenDescarteHistorico.push(jugadorId);
+            mostrarAnuncioPuesto(jugadorId, rolNuevo, jugador.rol);
+            publicarEstadoPartida();
+        }
+        function textoAnuncioPuesto(rolNuevo, rolAnterior) {
+            if (rolNuevo === "Presidente") {
+                return rolAnterior === rolNuevo ? "¡PRESIDENTE!" : "¡TENEMOS NUEVO PRESIDENTE!";
+            }
+            if (rolNuevo === "Culo") {
+                return rolAnterior === rolNuevo ? "¡CULARDO!" : "¡TENEMOS NUEVO CULARDO!";
+            }
+            return rolNuevo.toUpperCase();
+        }
+        function mostrarAnuncioPuesto(jugadorId, rolNuevo, rolAnterior) {
+            const zona = jugadorId === indiceHumano()
+                ? elemento("zona-humano")
+                : elemento("jugador-zona-" + jugadorId);
+            if (!zona || !rolNuevo) return;
+            zona.querySelectorAll(".aviso-puesto").forEach((aviso) => aviso.remove());
+            const aviso = document.createElement("span");
+            aviso.className = "aviso-puesto";
+            aviso.textContent = textoAnuncioPuesto(rolNuevo, rolAnterior);
+            zona.appendChild(aviso);
+            window.setTimeout(() => aviso.remove(), 3600);
+        }
+        function procesarLanzamientoDeCartas(jugadorId, cartas) {
+            const sotaJugada = cartas[0].numero === 10;
+            if (sotaJugada) mostrarAvisoSotaPueblo();
+            if (sotaJugada && (cartas.length === 2 || cartas.length === 3)) mostrarAvisoGrupoSotas(cartas.length);
+            const jugadaAnterior = estadoJuego.ultimaJugadaMesa;
+            const yaEnCierreSietes = estadoJuego.cierreSietesActivo;
+            const repeticion = jugadaAnterior && jugadaAnterior.length === cartas.length && jugadaAnterior[0].numero === cartas[0].numero;
+            const iniciaCierreSietes = cartas[0].numero === 7 && !estadoJuego.cierreSietesActivo;
+            estadoJuego.ultimaJugadaMesa = cartas;
+            estadoJuego.ultimoEnTirarIndex = jugadorId;
+            if (iniciaCierreSietes) {
+                estadoJuego.cierreSietesActivo = true;
+                estadoJuego.cantidadSietesMesa = cartas.length;
+            }
+            if (cartas.length === 4) estadoJuego.revolucionActiva = !estadoJuego.revolucionActiva;
+            estadoJuego.modificadorSota = sotaJugada;
+            registrarJugadorDescartado(jugadorId);
+            if (comprobarFinDeRonda()) return;
+            if (estadoJuego.cierreSietesActivo && !estadoJuego.jugadores.some((jugador) => jugador.mano.some((carta) => carta.numero === 7))) {
+                iniciarResolucionBaza(jugadorId, cartas, true);
+                return;
+            }
+            if (cartas.length === 1 && esDosDeOros(cartas[0]) && !estadoJuego.revolucionActiva && !estadoJuego.cierreSietesActivo) {
+                iniciarResolucionBaza(jugadorId, cartas);
+                return;
+            }
+            pasarSiguienteTurnoControl(estadoJuego.cierreSietesActivo && (iniciaCierreSietes || yaEnCierreSietes) ? 0 : repeticion ? cartas.length : 0);
+        }
+        function comprobarFinDeRonda() {
+            if (estadoJuego.ordenDescarteHistorico.length < estadoJuego.jugadores.length - 1 || estadoJuego.rondaFinalizada) return false;
+            estadoJuego.rondaFinalizada = true;
+            const restante = estadoJuego.jugadores.find((jugador) => jugador.mano.length > 0);
+            if (restante && !estadoJuego.ordenDescarteHistorico.includes(restante.id)) {
+                const posicion = estadoJuego.ordenDescarteHistorico.length;
+                const rolNuevo = rolesPorCantidad[estadoJuego.jugadores.length][posicion];
+                estadoJuego.ordenDescarteHistorico.push(restante.id);
+                mostrarAnuncioPuesto(restante.id, rolNuevo, restante.rol);
+                publicarEstadoPartida();
+            }
+            finalizarRondaYAsignarRoles();
+            return true;
+        }
+        function pasarSiguienteTurnoControl(cantidadASaltar = 0) {
+            if (estadoJuego.resolucionBazaPendiente) return;
+            limpiarPasadosObligadosPorSietes();
+            const conCartas = estadoJuego.jugadores.filter((jugador) => jugador.mano.length > 0);
+            const jugadoresQueDebenResponder = conCartas.filter((jugador) => jugador.id !== estadoJuego.ultimoEnTirarIndex);
+            const todosHanPasado = estadoJuego.ultimoEnTirarIndex !== null && jugadoresQueDebenResponder.every((jugador) => estadoJuego.jugadoresPasados.has(jugador.id));
+            if (todosHanPasado) {
+                const ultimoLanzador = estadoJuego.ultimoEnTirarIndex;
+                iniciarResolucionBaza(ultimoLanzador, estadoJuego.ultimaJugadaMesa, false, 1500);
+                return;
+            } else estadoJuego.turnoActivo = buscarSiguienteJugadorActivo(estadoJuego.turnoActivo, cantidadASaltar);
+            actualizarInterfazGraficaMesa(); renderizarCartasMesa(); ejecutarCicloDeTurnoBucle();
+        }
+        function buscarSiguienteJugadorActivo(desdeId, cantidadASaltar = 0) {
+            let jugadoresSaltados = 0;
+            const idsSaltados = [];
+            for (let salto = 1; salto <= estadoJuego.jugadores.length; salto += 1) {
+                const id = (desdeId + salto) % estadoJuego.jugadores.length;
+                if (estadoJuego.jugadores[id].mano.length === 0 || estadoJuego.jugadoresPasados.has(id)) continue;
+                if (jugadoresSaltados < cantidadASaltar) { jugadoresSaltados += 1; idsSaltados.push(id); continue; }
+                if (idsSaltados.length === 2) {
+                    anunciarEventoPartida("¡DOBLE SALTO!", 1800);
+                    publicarEstadoPartida();
+                }
+                idsSaltados.forEach(mostrarAnimacionSalto);
+                return id;
+            }
+            if (idsSaltados.length === 2) {
+                anunciarEventoPartida("¡DOBLE SALTO!", 1800);
+                publicarEstadoPartida();
+            }
+            idsSaltados.forEach(mostrarAnimacionSalto);
+            return desdeId;
+        }
+        function mostrarAnimacionSalto(jugadorId) {
+            const esHumano = jugadorId === indiceHumano();
+            const zona = elemento(esHumano ? "control-inferior-contenedor" : "jugador-zona-" + jugadorId);
+            zona.querySelectorAll(".aviso-salto").forEach((aviso) => aviso.remove());
+            const aviso = document.createElement("span");
+            aviso.className = esHumano ? "aviso-salto humano" : "aviso-salto";
+            aviso.textContent = esHumano ? "SALTADO" : "SALTADO";
+            zona.appendChild(aviso);
+            window.setTimeout(() => aviso.remove(), 2900);
+        }
+        function ejecutarCicloDeTurnoBucle() {
+            if (estadoJuego.resolucionBazaPendiente) return;
+            if (estadoJuego.faseIntercambioFuria) return;
+            if (estadoJuego.rondaFinalizada) return;
+            if (estadoJuego.ordenDescarteHistorico.length >= estadoJuego.jugadores.length - 1) { comprobarFinDeRonda(); return; }
+            window.clearTimeout(estadoJuego.temporizadorCpu);
+            estadoJuego.temporizadorCpu = null;
+            if (estadoJuego.modo === "online") {
+                if (anfitrionOnline) {
+                    const jugadorId = estadoJuego.turnoActivo;
+                    const jugador = estadoJuego.jugadores[jugadorId];
+                    if (jugador && jugador.cpu) {
+                        estadoJuego.temporizadorCpu = window.setTimeout(() => {
+                            if (estadoJuego.modo === "online" && anfitrionOnline &&
+                                estadoJuego.turnoActivo === jugadorId && !estadoJuego.rondaFinalizada) {
+                                ejecutarRutinaInteligenciaArtificial(jugadorId);
+                            }
+                        }, 1700);
+                    } else if (jugador && !estadoJuego.ultimaJugadaMesa && soloLeQuedaDosDeOros(jugador)) {
+                        estadoJuego.temporizadorCpu = window.setTimeout(() => {
+                            if (estadoJuego.modo === "online" && estadoJuego.turnoActivo === jugadorId &&
+                                !estadoJuego.ultimaJugadaMesa && soloLeQuedaDosDeOros(estadoJuego.jugadores[jugadorId])) {
+                                registrarJugadorPasa(jugadorId);
+                                pasarSiguienteTurnoControl();
+                            }
+                        }, 2300);
+                    }
+                }
+                return;
+            }
+            if (estadoJuego.turnoActivo !== indiceHumano()) {
+                window.clearTimeout(estadoJuego.temporizadorCpu);
+                const cpuId = estadoJuego.turnoActivo;
+                estadoJuego.temporizadorCpu = window.setTimeout(() => { if (estadoJuego.turnoActivo === cpuId && !estadoJuego.rondaFinalizada) ejecutarRutinaInteligenciaArtificial(cpuId); }, 2300);
+            } else if (!estadoJuego.ultimaJugadaMesa && soloLeQuedaDosDeOros(estadoJuego.jugadores[indiceHumano()])) {
+                const humanoId = indiceHumano();
+                elemento("hud-turno-alerta").textContent = "El 2 de Oros no puede cerrar tu mano";
+                estadoJuego.temporizadorCpu = window.setTimeout(() => {
+                    if (estadoJuego.turnoActivo === humanoId && soloLeQuedaDosDeOros(estadoJuego.jugadores[humanoId])) {
+                        registrarJugadorPasa(humanoId);
+                        pasarSiguienteTurnoControl();
+                    }
+                }, 2300);
+            }
+        }
+        function ejecutarRutinaInteligenciaArtificial(cpuId) {
+            const cpu = estadoJuego.jugadores[cpuId];
+            if (!cpu || cpu.mano.length === 0) {
+                estadoJuego.turnoActivo = buscarSiguienteJugadorActivo(cpuId);
+                actualizarInterfazGraficaMesa();
+                ejecutarCicloDeTurnoBucle();
+                return;
+            }
+            const grupos = new Map();
+            cpu.mano.forEach((carta) => { if (!grupos.has(carta.numero)) grupos.set(carta.numero, []); grupos.get(carta.numero).push(carta); });
+            let jugada = null;
+            if (!estadoJuego.ultimaJugadaMesa && !estadoJuego.cierreSietesActivo) {
+                for (const cantidad of [4, 3, 2, 1]) {
+                    if (cantidad === 4 && cpu.mano.length !== 4) continue;
+                    const opcionesDeSalida = [];
+                    grupos.forEach((grupo) => {
+                        const elegibles = cantidad > 1 ? grupo.filter((carta) => !esDosDeOros(carta)) : grupo;
+                        if (elegibles.length < cantidad) return;
+                        const combinacion = elegibles.slice(0, cantidad);
+                        if (validarJugadaContraMesa(combinacion)) opcionesDeSalida.push(combinacion);
+                    });
+                    if (opcionesDeSalida.length) {
+                        opcionesDeSalida.sort((a, b) => obtenerFuerzaEfectiva(a[0]) - obtenerFuerzaEfectiva(b[0]));
+                        jugada = opcionesDeSalida[0];
+                        break;
+                    }
+                }
+            } else {
+                const cantidadRequerida = estadoJuego.cierreSietesActivo
+                    ? cpu.mano.filter((carta) => carta.numero === 7).length
+                    : estadoJuego.ultimaJugadaMesa.length;
+                const opciones = [];
+                grupos.forEach((grupo) => {
+                    const elegibles = cantidadRequerida > 1 ? grupo.filter((carta) => !esDosDeOros(carta)) : grupo;
+                    if (elegibles.length < cantidadRequerida) return;
+                    const combinacion = elegibles.slice(0, cantidadRequerida);
+                    if (validarJugadaContraMesa(combinacion)) opciones.push(combinacion);
+                });
+                if (cantidadRequerida > 1 && !estadoJuego.cierreSietesActivo && !estadoJuego.revolucionActiva) {
+                    const dosDeOros = cpu.mano.find(esDosDeOros);
+                    if (dosDeOros && validarJugadaContraMesa([dosDeOros])) opciones.push([dosDeOros]);
+                }
+                opciones.sort((a, b) => obtenerFuerzaEfectiva(a[0]) - obtenerFuerzaEfectiva(b[0]));
+                if (opciones.length) jugada = opciones[0];
+            }
+            if (jugada) {
+                const uids = new Set(jugada.map((carta) => carta.uid));
+                cpu.mano = cpu.mano.filter((carta) => !uids.has(carta.uid));
+                procesarLanzamientoDeCartas(cpuId, jugada);
+            } else if (estadoJuego.ultimaJugadaMesa) {
+                registrarJugadorPasa(cpuId); pasarSiguienteTurnoControl();
+            } else {
+                const cartaBaja = [...cpu.mano].sort((a, b) => obtenerFuerzaEfectiva(a) - obtenerFuerzaEfectiva(b)).find((carta) => !(esDosDeOros(carta) && cpu.mano.length === 1));
+                if (!cartaBaja) {
+                    registrarJugadorPasa(cpuId);
+                    pasarSiguienteTurnoControl();
+                    return;
+                }
+                cpu.mano = cpu.mano.filter((carta) => carta.uid !== cartaBaja.uid);
+                procesarLanzamientoDeCartas(cpuId, [cartaBaja]);
+            }
+        }
+        function finalizarRondaYAsignarRoles() {
+            const roles = rolesPorCantidad[estadoJuego.jugadores.length];
+            estadoJuego.ordenDescarteHistorico.forEach((jugadorId, posicion) => {
+                const jugador = estadoJuego.jugadores[jugadorId];
+                jugador.rol = roles[posicion];
+                jugador.conteoRoles[jugador.rol] += 1;
+            });
+            const podio = estadoJuego.ordenDescarteHistorico.map((jugadorId, posicion) => (posicion + 1) + "º: " + estadoJuego.jugadores[jugadorId].nombre + " (" + roles[posicion] + ")").join("\n");
+            window.clearTimeout(estadoJuego.temporizadorCpu);
+            window.alert("Ronda terminada\n\n" + podio);
+            ejecutarFaseDeIntercambioFuria();
+        }
+        function ejecutarFaseDeIntercambioFuria() {
+            estadoJuego.primeraRonda = false;
+            estadoJuego.ordenDescarteHistorico = [];
+            repartirMazo();
+            reiniciarBaza();
+            estadoJuego.jugadores.forEach(ordenarMano);
+            const culo = estadoJuego.jugadores.find((jugador) => jugador.rol === "Culo");
+            const viceCulo = estadoJuego.jugadores.find((jugador) => jugador.rol === "Vice-Culo");
+            estadoJuego.intercambioCuloEnCurso = culo
+                ? { seatCulo: culo.id, enviadas: [], recibidas: [] }
+                : null;
+            estadoJuego.intercambioViceCuloEnCurso = viceCulo
+                ? { seatViceCulo: viceCulo.id, enviadas: [], recibidas: [] }
+                : null;
+            estadoJuego.resumenIntercambioCulo = null;
+            estadoJuego.resumenIntercambioViceCulo = null;
+            estadoJuego.faseIntercambioFuria = "presidente";
+            estadoJuego.solicitudIntercambioFuria = null;
+            continuarIntercambioFuria();
+        }
+        function continuarIntercambioFuria() {
+            if (estadoJuego.solicitudIntercambioFuria) {
+                reanudarSolicitudIntercambioFuria();
+                return;
+            }
+            const presidente = estadoJuego.jugadores.find((jugador) => jugador.rol === "Presidente");
+            const vicepresidente = estadoJuego.jugadores.find((jugador) => jugador.rol === "Vicepresidente");
+            const viceCulo = estadoJuego.jugadores.find((jugador) => jugador.rol === "Vice-Culo");
+            const culo = estadoJuego.jugadores.find((jugador) => jugador.rol === "Culo");
+            if (estadoJuego.faseIntercambioFuria === "presidente") {
+                estadoJuego.faseIntercambioFuria = "vicepresidente";
+                if (presidente && culo) {
+                    const mejoresCulo = obtenerCartasMasAltas(culo, 2);
+                    const idsMejores = new Set(mejoresCulo.map((carta) => carta.uid));
+                    culo.mano = culo.mano.filter((carta) => !idsMejores.has(carta.uid));
+                    if (estadoJuego.intercambioCuloEnCurso) {
+                        estadoJuego.intercambioCuloEnCurso.enviadas = mejoresCulo.map((carta) => ({ ...carta }));
+                    }
+                    presidente.mano.push(...mejoresCulo);
+                    ordenarMano(presidente);
+                    solicitarSeleccionDeCargo(presidente, culo, 2, "Elige dos cartas para entregar al Culo");
+                    return;
+                }
+            }
+            if (estadoJuego.faseIntercambioFuria === "vicepresidente") {
+                estadoJuego.faseIntercambioFuria = "fin";
+                if (vicepresidente && viceCulo) {
+                    const mejorViceCulo = obtenerCartasMasAltas(viceCulo, 1)[0];
+                    viceCulo.mano = viceCulo.mano.filter((carta) => carta.uid !== mejorViceCulo.uid);
+                    if (estadoJuego.intercambioViceCuloEnCurso) {
+                        estadoJuego.intercambioViceCuloEnCurso.enviadas = [{ ...mejorViceCulo }];
+                    }
+                    vicepresidente.mano.push(mejorViceCulo);
+                    ordenarMano(vicepresidente);
+                    solicitarSeleccionDeCargo(vicepresidente, viceCulo, 1, "Elige una carta para entregar al Vice-Culo");
+                    return;
+                }
+            }
+            if (estadoJuego.faseIntercambioFuria === "fin") {
+                estadoJuego.faseIntercambioFuria = null;
+                finalizarIntercambioFuria(culo);
+            }
+        }
+        function solicitarSeleccionDeCargo(origen, destino, cantidad, instruccion) {
+            estadoJuego.solicitudIntercambioFuria = {
+                requestId: "intercambio-" + Date.now() + "-" + Math.random().toString(36).slice(2),
+                seatOrigen: origen.id,
+                seatDestino: destino.id,
+                cantidad,
+                instruccion
+            };
+            const origenEsCpu = Boolean(origen.cpu) || estadoJuego.modo === "cpu" && origen.id !== indiceHumano();
+            if (origenEsCpu) {
+                const cartas = origen.mano.slice(0, cantidad);
+                registrarCartasRecibidasIntercambio(destino, cartas);
+                transferirCartas(origen, destino, cartas);
+                estadoJuego.solicitudIntercambioFuria = null;
+                continuarIntercambioFuria();
+                return;
+            }
+            actualizarInterfazGraficaMesa();
+            reanudarSolicitudIntercambioFuria();
+        }
+        function reanudarSolicitudIntercambioFuria() {
+            const solicitud = estadoJuego.solicitudIntercambioFuria;
+            if (!solicitud || !Array.isArray(estadoJuego.jugadores)) return;
+            const origen = estadoJuego.jugadores[solicitud.seatOrigen];
+            const destino = estadoJuego.jugadores[solicitud.seatDestino];
+            if (!origen || !destino) return;
+            if (estadoJuego.modo === "online" && solicitud.seatOrigen !== asientoOnline) return;
+            if (intercambioPendiente && intercambioPendiente.requestId === solicitud.requestId) return;
+            intercambioPendiente = {
+                origen,
+                destino,
+                cantidad: solicitud.cantidad,
+                instruccion: solicitud.instruccion,
+                requestId: solicitud.requestId,
+                remota: estadoJuego.modo === "online" && !anfitrionOnline
+            };
+            seleccionIntercambio.clear();
+            elemento("titulo-intercambio").textContent = "Intercambio de Furia";
+            elemento("instruccion-intercambio").textContent = solicitud.instruccion;
+            elemento("modal-intercambio").hidden = false;
+            renderizarCartasIntercambio();
+        }
+        function procesarRespuestaIntercambioRemota(mensaje) {
+            const solicitud = estadoJuego.solicitudIntercambioFuria;
+            if (!solicitud || solicitud.requestId !== mensaje.requestId ||
+                solicitud.seatOrigen !== mensaje.seat || !Array.isArray(mensaje.cardUids) ||
+                mensaje.cardUids.length !== solicitud.cantidad) return;
+            const origen = estadoJuego.jugadores[solicitud.seatOrigen];
+            const destino = estadoJuego.jugadores[solicitud.seatDestino];
+            const ids = new Set(mensaje.cardUids);
+            if (ids.size !== solicitud.cantidad || mensaje.cardUids.some((uid) => typeof uid !== "string") ||
+                !origen || !destino || mensaje.cardUids.some((uid) => !origen.mano.some((carta) => carta.uid === uid))) return;
+            const cartas = origen.mano.filter((carta) => ids.has(carta.uid));
+            registrarCartasRecibidasIntercambio(destino, cartas);
+            transferirCartas(origen, destino, cartas);
+            estadoJuego.solicitudIntercambioFuria = null;
+            continuarIntercambioFuria();
+            actualizarInterfazGraficaMesa();
+            renderizarCartasMesa();
+        }
+        function renderizarCartasIntercambio() {
+            const contenedor = elemento("cartas-intercambio");
+            contenedor.replaceChildren();
+            intercambioPendiente.origen.mano.forEach((carta) => {
+                const seleccionada = seleccionIntercambio.has(carta.uid);
+                const nodo = renderizarCarta(carta, false, seleccionada, -1);
+                nodo.setAttribute("role", "checkbox");
+                nodo.setAttribute("aria-checked", seleccionada ? "true" : "false");
+                nodo.setAttribute("tabindex", "0");
+                const alternar = () => {
+                    if (seleccionIntercambio.has(carta.uid)) seleccionIntercambio.delete(carta.uid);
+                    else if (seleccionIntercambio.size < intercambioPendiente.cantidad) seleccionIntercambio.add(carta.uid);
+                    renderizarCartasIntercambio();
+                };
+                nodo.addEventListener("click", alternar);
+                nodo.addEventListener("keydown", (evento) => { if (evento.key === "Enter" || evento.key === " ") { evento.preventDefault(); alternar(); } });
+                contenedor.appendChild(nodo);
+            });
+            elemento("estado-seleccion-intercambio").textContent = "Seleccionadas: " + seleccionIntercambio.size + " de " + intercambioPendiente.cantidad;
+            elemento("confirmar-intercambio").disabled = seleccionIntercambio.size !== intercambioPendiente.cantidad;
+        }
+        function transferirCartas(origen, destino, cartas) {
+            const idsCartas = new Set(cartas.map((carta) => carta.uid));
+            origen.mano = origen.mano.filter((carta) => !idsCartas.has(carta.uid));
+            destino.mano.push(...cartas);
+            ordenarMano(origen);
+            ordenarMano(destino);
+        }
+        function registrarCartasRecibidasIntercambio(destino, cartas) {
+            if (estadoJuego.intercambioCuloEnCurso &&
+                destino.id === estadoJuego.intercambioCuloEnCurso.seatCulo) {
+                estadoJuego.intercambioCuloEnCurso.recibidas = cartas.map((carta) => ({ ...carta }));
+            }
+            if (estadoJuego.intercambioViceCuloEnCurso &&
+                destino.id === estadoJuego.intercambioViceCuloEnCurso.seatViceCulo) {
+                estadoJuego.intercambioViceCuloEnCurso.recibidas = cartas.map((carta) => ({ ...carta }));
+            }
+        }
+        function confirmarSeleccionIntercambio() {
+            if (!intercambioPendiente || seleccionIntercambio.size !== intercambioPendiente.cantidad) return;
+            const { origen, destino, remota, requestId } = intercambioPendiente;
+            const cardUids = [...seleccionIntercambio];
+            if (remota) {
+                if (!socketPartida || socketPartida.readyState !== WebSocket.OPEN) {
+                    mostrarEstadoOnline("Sin conexión: no se ha enviado el intercambio.", true);
+                    return;
+                }
+                socketPartida.send(JSON.stringify({ type: "exchange-response", requestId, cardUids }));
+                intercambioPendiente = null;
+                seleccionIntercambio.clear();
+                elemento("modal-intercambio").hidden = true;
+                mostrarEstadoOnline("Cartas enviadas. Esperando a que continúe el intercambio.");
+                return;
+            }
+            const cartas = origen.mano.filter((carta) => seleccionIntercambio.has(carta.uid));
+            registrarCartasRecibidasIntercambio(destino, cartas);
+            transferirCartas(origen, destino, cartas);
+            intercambioPendiente = null;
+            seleccionIntercambio.clear();
+            elemento("modal-intercambio").hidden = true;
+            estadoJuego.solicitudIntercambioFuria = null;
+            continuarIntercambioFuria();
+            actualizarInterfazGraficaMesa();
+            renderizarCartasMesa();
+        }
+        function finalizarIntercambioFuria(culo) {
+            estadoJuego.jugadores.forEach(ordenarMano);
+            const intercambio = estadoJuego.intercambioCuloEnCurso;
+            if (intercambio) {
+                estadoJuego.resumenIntercambioCulo = {
+                    id: "intercambio-culo-" + Date.now() + "-" + Math.random().toString(36).slice(2),
+                    seat: intercambio.seatCulo,
+                    rol: "Culo",
+                    enviadas: intercambio.enviadas.map((carta) => ({ ...carta })),
+                    recibidas: intercambio.recibidas.map((carta) => ({ ...carta }))
+                };
+                estadoJuego.intercambioCuloEnCurso = null;
+                mostrarResumenIntercambio(estadoJuego.resumenIntercambioCulo);
+            }
+            const intercambioViceCulo = estadoJuego.intercambioViceCuloEnCurso;
+            if (intercambioViceCulo) {
+                estadoJuego.resumenIntercambioViceCulo = {
+                    id: "intercambio-vice-culo-" + Date.now() + "-" + Math.random().toString(36).slice(2),
+                    seat: intercambioViceCulo.seatViceCulo,
+                    rol: "Vice-Culo",
+                    enviadas: intercambioViceCulo.enviadas.map((carta) => ({ ...carta })),
+                    recibidas: intercambioViceCulo.recibidas.map((carta) => ({ ...carta }))
+                };
+                estadoJuego.intercambioViceCuloEnCurso = null;
+                mostrarResumenIntercambio(estadoJuego.resumenIntercambioViceCulo);
+            }
+            publicarEstadoPartida();
+            estadoJuego.turnoActivo = culo ? culo.id : 0;
+            estadoJuego.ultimoEnTirarIndex = culo ? culo.id : null;
+            actualizarInterfazGraficaMesa();
+            renderizarCartasMesa();
+            animarRepartoDeCartas();
+            ejecutarCicloDeTurnoBucle();
+        }
+        elemento("btn-modo-cpu").addEventListener("click", iniciarModoCpu);
+        elemento("btn-salir-partida").addEventListener("click", salirDePartida);
+        elemento("btn-anadir-cademir").addEventListener("click", añadirCademir);
+        elemento("btn-comentarios").addEventListener("click", alternarComentariosRapidos);
+        elemento("lista-comentarios").addEventListener("click", enviarComentarioRapido);
+        elemento("btn-reanudar-online").addEventListener("click", reanudarPartidaOnline);
+        elemento("btn-abrir-multi").addEventListener("click", () => { mostrarPanel("multi"); mostrarOpcionesMulti(); });
+        elemento("btn-volver-menu").addEventListener("click", volverDesdeMenuMulti);
+        elemento("btn-montar").addEventListener("click", () => { elemento("opciones-multi-base").hidden = true; elemento("form-montar-mesa").hidden = false; elemento("codigo-generado-input").value = "Se generará al crear la sala"; elemento("nombre-creador").focus(); });
+        elemento("btn-unirse").addEventListener("click", () => { elemento("opciones-multi-base").hidden = true; elemento("form-unirse-mesa").hidden = false; elemento("nombre-invitado").focus(); });
+        document.querySelectorAll("[data-volver-submenu]").forEach((boton) => boton.addEventListener("click", volverDesdeSubmenuMulti));
+        elemento("form-montar-mesa").addEventListener("submit", montarMesa);
+        elemento("form-unirse-mesa").addEventListener("submit", unirseAMesa);
+        elemento("codigo-unirse-input").addEventListener("input", (evento) => { evento.target.value = evento.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 9); });
+        elemento("btn-jugar").addEventListener("click", ejecutarAccionJugar);
+        elemento("btn-pasar").addEventListener("click", ejecutarAccionPasar);
+        elemento("confirmar-intercambio").addEventListener("click", confirmarSeleccionIntercambio);
+        elemento("cerrar-resumen-intercambio").addEventListener("click", () => {
+            elemento("modal-resumen-intercambio").hidden = true;
+        });
+        actualizarBotonReanudarOnline();
+    </script>
+</body>
+</html>
